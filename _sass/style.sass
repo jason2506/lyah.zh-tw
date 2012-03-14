@@ -1,0 +1,78 @@
+$content-font-family: Arial, sans-serif
+$title-font-family: Georgia, $content-font-family
+
+html
+  background: url(../img/bg.png)
+
+body
+  background: #FFF
+  font-family: $content-font-family
+  font-size: 100%
+  margin: 3.13em 0
+  padding: 1.56em 0 3.13em
+  vertical-align: baseline
+
+h1, h2, h3
+  color: #000
+  font-weight: bold
+  line-height: 1
+  margin: 0 0 .25em
+
+h1
+  font-size: 3.75em
+  font-family: $title-font-family
+  font-weight: normal
+
+h2
+  font-size: 1.25em
+
+h3
+  font-size: 1em
+  font-style: italic
+
+a:hover
+  text-decoration: none
+
+p
+  margin: 0 0 1.56em
+
+#content
+  width: 50em
+  margin: 0 auto
+
+body.chapters 
+  ol
+    font-family: $title-font-family
+    font-size: 1.5em
+    color: #408156
+    list-style-type: decimal
+    margin: 1.04em 0
+    padding: 0 0 0 1.04em
+
+    & > li > a
+      border-bottom: 1px solid #DDD
+      color: #555
+      display: block
+      text-decoration: none
+
+      &:hover
+        color: #BD2A33
+
+  ul
+    font-family: $content-font-family
+    font-size: .67em
+    line-height: 2.5
+    list-style: none
+    margin: 1.56em
+    padding: 0
+
+    & > li > a
+      color: #555
+      text-decoration: underline
+
+      &:visited
+        color: #777
+
+      &:hover
+        color: #BD2A33
+
