@@ -1,15 +1,15 @@
 ---
 layout: default
-title: Chapters
+title: 章節索引
 class: chapters
 ---
 
 # Learn You a Haskell for Great Good!
 
-1.  [Introduction](#)
-    * [About this tutorial](#)
-    * [So what's Haskell?](#)
-    * [What you need to dive in](#)
+1.  [引言](introduction)
+    * [關於此教學](introduction#about-this-tutorial)
+    * [所以，Haskell 是什麼？](introduction#so-whats-haskell)
+    * [你所需要的是....](introduction#what-you-need)
 2.  [Starting Out](#)
     * [Ready, set, go!](#)
     * [Baby's first functions](#)

@@ -8,6 +8,7 @@ body
   background: #FFF
   font-family: $content-font-family
   font-size: 87.5%
+  line-height: 1.79em
   margin: 3.58em 0
   padding: 1.79em 0 3.58em
   vertical-align: baseline
@@ -16,19 +17,21 @@ h1, h2, h3
   color: #000
   font-weight: bold
   line-height: 1
-  margin: 0 0 .25em
 
 h1
   font-size: 4.29em
   font-family: $title-font-family
   font-weight: normal
+  margin: 0 0 .25em
 
 h2
   font-size: 1.43em
+  margin: 0 0 .75em
 
 h3
   font-size: 1.14em
   font-style: italic
+  margin: 0 0 .94em
 
 a:hover
   text-decoration: none
@@ -36,9 +39,53 @@ a:hover
 p
   margin: 0 0 1.79em
 
+em
+  font-style: normal
+  font-weight: bold
+
+code
+  background: #DDD
+  font-family: Consolas, "Courier New", monospace
+  font-weight: bold
+  padding: 0 3px
+  white-space: nowrap
+
+img
+  border: 0
+  margin: .72em
+
 #content
   width: 57.15em
   margin: 0 auto
+
+.nav
+  list-style: none
+  margin: 0
+  padding: 0
+
+  &.head
+    margin-bottom: 1.79em
+
+  li
+    display: inline-block
+    width: 33%
+
+  .prev
+    //text-align: left
+
+    a
+      background: url(../img/prv.png) center left no-repeat
+      padding-left: 1.43em
+
+  .toc
+    text-align: center
+
+  .next
+    text-align: right
+
+    a
+      background: url(../img/nxt.png) center right no-repeat
+      padding-right: 1.43em
 
 body.chapters 
   ol

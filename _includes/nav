@@ -1,0 +1,11 @@
+<ul class="nav {{ type }}">
+  <li class="prev">
+    {% if page.prev %}<a href="{{ page.prev.url }}">{{ page.prev.title }}</a>{% endif %}
+  </li>
+  <li class="toc">
+    <a href="../">索引</a>
+  </li>
+  <li class="next">
+    {% if page.next %}<a href="{{ page.next.url }}">{{ page.next.title }}</a>{% endif %}
+  </li>
+</ul>
