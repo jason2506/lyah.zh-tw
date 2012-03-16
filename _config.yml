@@ -1,5 +1,5 @@
 auto: true
-exclude: []
+exclude: [README.md]
 lsi: false
 pygments: true
 safe: true
