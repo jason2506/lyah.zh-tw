@@ -1,5 +1,6 @@
 $content-font-family: Arial, sans-serif
 $title-font-family: Georgia, $content-font-family
+$nav-icon-padding: 1.43em
 
 html
   background: url(../img/bg.png)
@@ -74,8 +75,8 @@ img
     //text-align: left
 
     a
-      background: url(../img/prv.png) center left no-repeat
-      padding-left: 1.43em
+      background: url(../img/prv.png) top left no-repeat
+      padding-left: $nav-icon-padding
 
   .toc
     text-align: center
@@ -84,8 +85,8 @@ img
     text-align: right
 
     a
-      background: url(../img/nxt.png) center right no-repeat
-      padding-right: 1.43em
+      background: url(../img/nxt.png) top right no-repeat
+      padding-right: $nav-icon-padding
 
 span.note
   color: #666
