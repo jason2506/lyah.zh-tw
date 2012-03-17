@@ -3,7 +3,7 @@ layout: page
 title: 引言
 next:
     url: starting-out
-    title: Starting Out
+    title: 出發
 ---
 
 ## <a name="about-this-tutorial">關於此教學</a>
@@ -31,7 +31,7 @@ Haskell 是*惰性的（lazy）*。這代表，除非明確指定，否則 Haske
 <img src="img/boat.png" alt="boat" style="float:right" />
 Haskell 是*靜態型別的（statically typed）*。當你編譯你的程式，編譯器知道程式的哪個部分是數字、哪個部分是字串等等。這意味著許多可能的錯誤會在編譯時期（compile time）被抓出來。如果你嘗試將一個數字與一個字串相加，編譯器將會向你抱怨。Haskell 採用一種非常好的型別系統，其具有*型別推導（type inference）*。這代表你不必明確為程式的每個部分標記型別，因為型別系統能夠聰明的斷定大部分的情況。假如你說 `a = 5 + 4`，你不需要告訴 Haskell `a` 是一個數字──它可以自己推測出來。型別推導也使得你的程式更加一般化（general）。假如你建立的一個 function 會加總它的兩個參數，你不需要明確陳述它們的型別，這個 function 將會對任何與數字行為相同的兩個參數進行操作<span class="note">〔譯註：假如傳入的兩個參數支援相加這個操作，這個 function 就能夠運作了〕</span>。
 
-Haskell 是*優雅且簡潔的*。因為他使用了許多高階的概念，與等值的命令式程式相比，Haskell 程式通常更短。對比於較長的程式，更短的程式更容易被維護，錯誤也比較少。
+Haskell 是*優雅且簡潔的*。因為它使用了許多高階的概念，與等值的命令式程式相比，Haskell 程式通常更短。對比於較長的程式，更短的程式更容易被維護，錯誤也比較少。
 
 Haskell 由一些（擁有博士學位的）*真正的聰明人*所創。Haskell 的研發始於 1987 年，當時有一個委員會的研究人員聚在一起，以設計一個了不起的語言。2003 年，Haskell Report 發表，定義了這個語言的一個穩定版本。
 
