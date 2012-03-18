@@ -1,9 +1,7 @@
 auto: true
 exclude: [README.md]
 lsi: false
-pygments: true
-safe: true
+safe: false
 markdown: rdiscount
 
 base_url: http://jason2506.github.com/learn-you-a-haskell.zh-tw/
-

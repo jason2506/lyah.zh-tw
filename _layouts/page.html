@@ -1,5 +1,8 @@
 ---
 layout: default
+styles: [css/SyntaxHighlighter.css]
+scripts: [js/shCore.js, js/shBrushHaskell.js, js/shBrushPlain.js]
+inner_script: dp.SyntaxHighlighter.HighlightAll('code', false, false, false, 1, false);
 ---
 {% assign type = "head" %}
 {% include nav %}
