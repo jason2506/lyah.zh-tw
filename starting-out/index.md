@@ -126,6 +126,75 @@ ghci> (succ 9) + (max 5 4) + 1
 
 ## <a name="babys-first-functions">我們的第一個 function</a>
 
+在前一節我們已經對呼叫 function 有個基本的體驗。現在讓我們來嘗試建立我們自己的 function！開啟你最喜歡的文字編輯器，並輸入這個接收一個數字並將之乘以兩倍的 function。
+
+<pre name="code" class="haskell: hs">
+doubleMe x = x + x
+</pre>
+
+function 被定義得像是它被呼叫的方式：function 名稱後緊跟著以空白隔開的參數。不過在定義 function 時，還有一個 `=` 接著我們所定義的 function 行為。將它儲存成 `baby.hs` 或是其他名稱。現在導覽到檔案儲存的位置，並在此執行 `ghci`。一旦進入 GHCI，就執行 `:l baby`。現在我們的腳本已經被載入了，我們可以來試試這個我們定義的 function。
+
+<pre name="code" class="haskell: ghci">
+ghci> :l baby
+[1 of 1] Compiling Main             ( baby.hs, interpreted )
+Ok, modules loaded: Main.
+ghci> doubleMe 9
+18
+ghci> doubleMe 8.3
+16.6
+</pre>
+
+因為 `+` 能夠在整數與浮點數上運作（事實上，任何能被視為數字的值都可以），我們的 function 也能在任何數字上運作。讓我們來建立一個接收兩個數字，將它們各自乘以二，然後再加總起來的 function。
+
+<pre name="code" class="haskell: hs">
+doubleUs x y = x*2 + y*2
+</pre>
+
+很簡單。我們也可以把它定義成 `doubleUs x y = x + x + y + y`。測試看看，你會得到這個相當顯而易見的結果（記得將這個 function 附加到 `baby.hs`，儲存之後在 GHCI 執行 `:l baby`）：
+
+<pre name="code" class="haskell: ghci">
+ghci> doubleUs 4 9
+26
+ghci> doubleUs 2.3 34.2
+73.0
+ghci> doubleUs 28 88 + doubleMe 123
+478
+</pre>
+
+正如預期，你可以從你建立的別的 function 呼叫你自己的 function。考慮到這一點，我們可以像這樣重新定義 `doubleUs`：
+
+<pre name="code" class="haskell: hs">
+doubleUs x y = doubleMe x + doubleMe y
+</pre>
+
+這是一個非常簡單的範例，此種模式你會經常在整個 Haskell 見到。建立一個明顯是正確的基礎 function，然後將它們結合成更複雜的 function。這種方法也讓你免於重複撰寫。假如某些數學家發覺 2 其實是 3，讓你必須去修改你的程式怎麼辦？你可以只將 `doubleMe` 重新定義成 `x + x + x`，同時因為 `doubleUs` 呼叫了 `doubleMe`，它自動而然地能夠在這個 2 是 3 的奇怪新世界上運作。
+
+在 Haskell 中的 function 並沒有任何特殊的順序，所以它並不在乎你是先定義 `doubleMe` 才定義 `doubleUs`，還是採用了其他定義的方式。
+
+現在我們準備要建立一個將某數乘以二的 function，不過只有在這個數字小於或等於 100 的情況，因為大於 100 的數字已經足夠大了！
+
+<pre name="code" class="haskell: hs">
+doubleSmallNumber x = if x > 100
+                        then x
+                        else x*2
+</pre>
+
+<img src="img/baby.png" alt="this is you" style="float:left" />
+
+在這裡我們引入了 Haskell 的 if 敘述。你可能對其他語言裡的 if 敘述很熟悉。Haskell 的 if 敘述與命令式語言中的 if 敘述的不同在於：else 的部份在 Haskell 中是強制的。在命令式語言中，你可以在條件（condition）不滿足的情況下跳過幾個步驟，不過在 Haskell 中，每個 expression 與 function 都必須傳回某值。我們也可以把 if 敘述寫在同一行，不過我發現現在這樣更好讀。另外一件關於 Haskell 中的 if 敘述的事，就是它是一個 expression。一個 expression 基本上是一段傳回一個值的程式碼。`5` 是一個 expression，因為他傳回 5、`4 + 8` 是一個 expression、`x + y` 也是一個 expression，因為它傳回 `x` 與 `y` 的和。因為 else 是強制性的，一個 if 敘述總是會傳回某個值，這就是為什麼它是一個 expression 的原因。假如我們想要將先前 function 產生的每個數字加上一，我們可以把它寫成這樣：
+
+<pre name="code" class="haskell: hs">
+doubleSmallNumber' x = (if x > 100 then x else x*2) + 1
+</pre>
+
+若是我們省略了括號，這個 function 就只會在 `x` 大於 100 的時候加上一。注意在 function 名稱後面的 `'`。這一撇在 Haskell 的語法中並沒有任何特殊的意義。它是一個用在 function 名稱的合法字元。我們有時候會使用 `'` 來表示一個嚴格版的（非惰性的）function，或是一個 function 或是變數（variable）稍作修改的版本。因為 `'` 是一個在 function 中的合法字元，我們可以建立一個像這樣的 function：
+
+<pre name="code" class="haskell: hs">
+conanO'Brien = "It's a-me, Conan O'Brien!"
+</pre>
+
+這裡有兩件值得注意的事情。第一件是在這個 function 名稱中，我們並沒有將 Conan 的名字寫成大寫。這是因為 function 不能以大寫字母開頭。我們將會在稍後看到原因。第二件事是這個 function 並不接收任何參數。當一個 function 不接收任何參數，我們通常稱它是一個 definition（或是一個 name）。因為我們無法改變 name（與 function），意味著一旦我們定義了 `conanO'Brien` 與字串（string） `"It's a-me, Conan O'Brien!"`，它們兩者就是等價的。
+
 ## <a name="an-intro-to-lists">List 簡介</a>
 
 ## <a name="texas-ranges">Texas ranges</a>
