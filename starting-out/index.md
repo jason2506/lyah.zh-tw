@@ -9,7 +9,7 @@ prev:
 ## <a name="ready-set-go">就定位，預備，開始！</a>
 
 <img src="img/startingout.png" alt="egg" style="float:right" />
-好吧，讓我們開始！假如你是那種直接跳過介紹不看的討厭鬼，你可能還是需要去閱讀前言的最後一節，因為那裡面講了此教學所需要的東西，以及我們該如何載入 function。我們所要做的第一件事是執行 ghc 的互動模式，然後呼叫一些 function 以對 haskell 有個十分基礎的體驗。開啟你的終端機（terminal）並輸入 `ghci`。你將會看到像這樣的歡迎訊息：
+好吧，讓我們開始！假如你是那種直接跳過介紹不看的討厭鬼，你可能還是需要去閱讀引言的最後一節，因為那裡面講了此教學所需要的東西，以及我們該如何載入 function。我們所要做的第一件事是執行 ghc 的互動模式，然後呼叫一些 function 以對 haskell 有個十分基礎的體驗。開啟你的終端機（terminal）並輸入 `ghci`。你將會看到像這樣的歡迎訊息：
 
 <pre name="code" class="haskell: ghci">
 GHCi, version 6.8.2: http://www.haskell.org/ghc/  :? for help
