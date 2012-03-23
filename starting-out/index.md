@@ -412,6 +412,64 @@ False
 
 ## <a name="texas-ranges">Texas ranges</a>
 
+<img src="img/cowboy.png" alt="draw" style="float:right" />
+假使你想要一個包含 1 到 20 之間所有數字的 list 呢？當然，你可以把它們全部打出來，但顯然這對於自程式語言中要求卓越的紳士來說並不是個解決方案。取而代之的，我們會使用 range。range 是建立等差數列 list 的方法之一，其中的元素是可以被列舉（enumerate）的。數字可以被列舉：一、二、三、四、等等。字元也是可以被列舉的：字母表是一個從 A 到 Z 的字元列舉（enumeration）。名稱不可以被列舉：「Jonn」後面是什麼呢？我不知道。
+
+要建立一個包含 1 到 20 之間所有自然數的 list，你只要寫作 `[1..20]` 就可以了。這等同於寫作 `[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]`。這之中沒什麼差別，除了手動寫下長的列舉序列這點還滿蠢的。
+
+<pre name="code" class="haskell: ghci">
+ghci> [1..20]
+[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+ghci> ['a'..'z']
+"abcdefghijklmnopqrstuvwxyz"
+ghci> ['K'..'Z']
+"KLMNOPQRSTUVWXYZ"
+</pre>
+
+range 很酷，因為你也可以指定一個 step。假使你想要 1 到 20 之間的所有偶數呢？或是 1 到 20 之間的所有三的倍數？
+
+<pre name="code" class="haskell: ghci">
+ghci> [2,4..20]
+[2,4,6,8,10,12,14,16,18,20]
+ghci> [3,6..20]
+[3,6,9,12,15,18]
+</pre>
+
+這只是一個以逗號隔開前兩個元素，然後指定上限值的問題。雖然有 step 的 range 很聰明，但是它並不如有些人預期的那般聰明。你無法執行 `[1,2,4,8,16..100]` 並預期得到所有 2 的幂次。首先，因為你只能指定一個 step。其次是因為如果只給定前幾個元素，有些並非等差的序列是很含糊的。
+
+要建立一個所有 20 到 1 數字的 list，你不能僅寫作 `[20..1]`，你必須要寫成 `[20,19..1]` 才行。
+
+在 range 中使用浮點數時得當心！因為（出於定義）浮點數並非完全精確，所以將它們使用在 range 中會產生一些非常糟糕的結果。
+
+<pre name="code" class="haskell: ghci">
+ghci> [0.1, 0.3 .. 1]
+[0.1,0.3,0.5,0.7,0.8999999999999999,1.0999999999999999]
+</pre>
+
+我的忠告是：不要在 list range 中使用浮點數。
+
+只要不指定上限值，你也可以使用 range 來建立無限的 list。之後我們將會看到無限 list 的更多細節。現在，讓我們看看你該如何取得前 24 個 13 的倍數。當然，你可以寫作 `[13,26..24*13]`。不過這裡有個更好的方式：`take 24 [13,26..]`。因為 Haskell 是惰性的，它並不會馬上嘗試去生成無限 list，因為這永遠不會完成。它會等著，看你想要從這個無限 list 中取得什麼。在這裡它發現你僅是想要前 24 個元素，而它樂意幫忙。
+
+以下是一些產生無限 list 的 function：
+
+<code class="label function">cycle</code> 接收一個 list，並將之循環成一個無限 list。假如你嘗試要顯示結果，它將會一直跑下去。所以你必須要指定某個範圍。
+
+<pre name="code" class="haskell: ghci">
+ghci> take 10 (cycle [1,2,3])
+[1,2,3,1,2,3,1,2,3,1]
+ghci> take 12 (cycle "LOL ")
+"LOL LOL LOL "
+</pre>
+
+<code class="label function">repeat</code> 接收一個元素，並產出一個僅有這個元素的無限 list。它就像是循環一個僅有一個元素的 list。
+
+<pre name="code" class="haskell: ghci">
+ghci> take 10 (repeat 5)
+[5,5,5,5,5,5,5,5,5,5]
+</pre>
+
+然而，如果你只是想要一個某數量個相同元素的 list，使用 <code class="label function">replicate</code> function 是比較簡單的。`replicate 3 10` 回傳 `[10,10,10]`。
+
 ## <a name="im-a-list-comprehension">我是一個 list comprehension</a>
 
 ## <a name="tuples">Tuples</a>
