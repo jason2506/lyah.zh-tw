@@ -472,4 +472,106 @@ ghci> take 10 (repeat 5)
 
 ## <a name="im-a-list-comprehension">我是一個 list comprehension</a>
 
+<img src="img/kermit.png" alt="frog" style="float:left" />
+如果你曾上過一門數學課，你大概接觸過 <i>set comprehension</i>。它們通常被用來建立比一般集合（set）還更特定的集合。對於一個包含前十個偶數的集合，它的一個 comprehension 為 <img src="img/setnotation.png" alt="set notation" style="margin:0" />。在 `|` 之前的部份被稱為輸出函數、`x` 是變數、`N` 是輸入集合而 `x <= 10` 為述部（predicate）。這代表集合包含滿足述部的所有雙倍自然數。
+
+如果我們將此寫在 Haskell 中，我們可以寫成像是 `take 10 [2,4..]`。不過如果我們要的不是將前十個自然數乘以兩倍，而是要將某種更複雜的 function 套用在它們之上？我們可以對此使用 list comprehension。list comprehension 非常類似於 set comprehension。我們現在堅持要取得前十個偶數。我們可以用的 list comprehension 為 `[x*2 | x <- [1..10]]`。`x` 來自於 `[1..10]`，並取得所有在 `[1..10]` 的元素（我們已經將其綁定在 `x`），將它乘以兩倍。來試試這個 comprehension：
+
+<pre name="code" class="haskell: ghci">
+ghci> [x*2 | x <- [1..10]]
+[2,4,6,8,10,12,14,16,18,20]
+</pre>
+
+如你所見，我們得到了想要的結果。現在讓我們在這個 comprehension 加上一個條件（或是述部）。述部在綁定部分之後，並以逗號來分隔。讓我們假定，我們只想要乘以兩倍後大於或等於 12 的所有元素。
+
+<pre name="code" class="haskell: ghci">
+ghci> [x*2 | x <- [1..10], x*2 >= 12]
+[12,14,16,18,20]
+</pre>
+
+酷，它能跑。如果我們想要從 50 到 100 中除以 7 的餘數為 3 的所有數字怎麼辦呢？簡單。
+
+<pre name="code" class="haskell: ghci">
+ghci> [ x | x <- [50..100], x `mod` 7 == 3]
+[52,59,66,73,80,87,94]
+</pre>
+
+成功！注意到利用述部來清除 list 中不合條件的操作也被稱為*過濾（filtering）*。我們取得一個數字的 list 並以述部來過濾它們。現在舉另一個例子：讓我們假定我們想要一個取代每個大於等於 10 的奇數為 `"BANG!"`<span class="note">〔譯註：原文寫作「*大於* 10 的奇數」而非「大於等於」，從程式意義看來應為筆誤〕</span>，並取代每個小於 10 的奇數為 `"BOOM!"` 的 comprehension。假如某個數字不是奇數，我們將它從我們的 list 中捨棄。方便起見，我們將這個 comprehension 放在一個 function 裡面，所以我們可以輕易地重複使用它。
+
+<pre name="code" class="haskell: hs">
+boomBangs xs = [ if x < 10 then "BOOM!" else "BANG!" | x <- xs, odd x]
+</pre>
+
+comprehension 的最後一部分是述部。function `odd` 對於一個奇數回傳 `True`、對於一個偶數回傳 `False`。只有令所有的述部求值為 `True` 的元素會被包含在 list 中。
+
+<pre name="code" class="haskell: ghci">
+ghci> boomBangs [7..13]
+["BOOM!","BOOM!","BANG!","BANG!"]
+</pre>
+
+我們可以引入多個述部。假使我們想要從 10 到 20 且不為 13、15 或 19 的所有數字，我們會這樣做：
+
+<pre name="code" class="haskell: ghci">
+ghci> [ x | x <- [10..20], x /= 13, x /= 15, x /= 19]
+[10,11,12,14,16,17,18,20]
+</pre>
+
+我們不僅可以在 list comprehension 有多個述部（一個被包含在最終 list 的元素必須滿足所有的述部），我們也可以自多個 list 引入元素。當從多個 list 引入元素時，comprehension 會產生所有給定 list 的組合，並透過我們給定的輸出函數來加入它們。一個從兩個長度為 4 的 list 引入元素的 comprehension，其產生的 list──若是我們不過濾它們──長度將會是 16。
+假使我們有兩個 list──`[2,5,10]` 與 `[8,10,11]`，且我們想要取得在這些 list 中所有可能的數字組合的乘積，在這裡我們會這麼做：
+
+<pre name="code" class="haskell: ghci">
+ghci> [ x*y | x <- [2,5,10], y <- [8,10,11]]
+[16,20,22,40,50,55,80,100,110]
+</pre>
+
+正如預期，新的 list 長度為 9。如果我們想要所有大於 50 的可能乘積呢？
+
+<pre name="code" class="haskell: ghci">
+ghci> [ x*y | x <- [2,5,10], y <- [8,10,11], x*y > 50]
+[55,80,100,110]
+</pre>
+
+一個結合形容詞的 list 與名詞的 list 的 list comprehension 如何....
+
+<pre name="code" class="haskell: ghci">
+ghci> let nouns = ["hobo","frog","pope"]
+ghci> let adjectives = ["lazy","grouchy","scheming"]
+ghci> [adjective ++ " " ++ noun | adjective <- adjectives, noun <- nouns]
+["lazy hobo","lazy frog","lazy pope","grouchy hobo","grouchy frog",
+"grouchy pope","scheming hobo","scheming frog","scheming pope"]
+</pre>
+
+我知道了！讓我們來寫我們自己的 `length`！我們把它叫做 `length'`。
+
+<pre name="code" class="haskell: hs">
+length' xs = sum [1 | _ <- xs]
+</pre>
+
+`_` 代表我們無論如何都不在意我們從 list 引入了什麼，所以我們只寫作 `_`，而不是一個我們永遠不會用到的變數名稱。這個 function 將 list 的所有元素取代為 `1` 並加總起來。這代表著最終的總和將會是我們 list 的長度。
+
+只是個友善的提醒：因為字串為一個 list，我們可以使用 comprehension 來處理並產生字串。這裡是一個接收一個字串，並移除所有非大寫字母的 function：
+
+<pre name="code" class="haskell: hs">
+removeNonUppercase st = [ c | c <- st, c `elem` ['A'..'Z']]
+</pre>
+
+測試看看：
+
+<pre name="code" class="haskell: ghci">
+ghci> removeNonUppercase "Hahaha! Ahahaha!"
+"HA"
+ghci> removeNonUppercase "IdontLIKEFROGS"
+"ILIKEFROGS"
+</pre>
+
+在這裡述部作了所有的工作。它假定會被包含在新的 list 之中的字元，只能是 list `['A'..'Z']` 中的其中一個元素。如果你要操作包含 list 的 list，巢狀的（nested）list comprehension 也是可能的。假使有一個包含許多數字 list 的 list。讓我們在不拆開 list 的情況下移除所有奇數。
+
+<pre name="code" class="haskell: ghci">
+ghci> let xxs = [[1,3,5,2,3,1,2,4,5],[1,2,3,4,5,6,7,8,9],[1,2,4,2,1,6,3,1,3,2,3,6]]
+ghci> [ [ x | x <- xs, even x ] | xs <- xxs]
+[[2,2,4],[2,4,6,8],[2,4,2,6,2,6]]
+</pre>
+
+你可以橫跨多行撰寫 list comprehension。所以如果你並不在 GHCI 中，把較長的 list comprehension 切成許多行是比較好的，尤其在它們為巢狀的時候。
+
 ## <a name="tuples">Tuples</a>
