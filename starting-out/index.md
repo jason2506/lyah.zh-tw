@@ -575,3 +575,95 @@ ghci> [ [ x | x <- xs, even x ] | xs <- xxs]
 你可以橫跨多行撰寫 list comprehension。所以如果你並不在 GHCI 中，把較長的 list comprehension 切成許多行是比較好的，尤其在它們為巢狀的時候。
 
 ## <a name="tuples">Tuples</a>
+
+<img src="img/tuple.png" alt="tuples" style="float:right" />
+在某些方面，tuple 就像是 list──它們都是將多個值存入一個單一值的方式。然而，它們有一些本質上的不同。一個數字的 list 就是一個數字序列。這就是它的型別，且與 list 之中是只有一個數字或是無限個數字無關。而 tuple 則被使用在你確切知道你想要結合多少值的情況，且它的型別取決於其中有多少個元素與元素的型別。tuple 以括號表示，且其元素以逗號來分隔。
+
+另外一個主要的不同是：tuple 不必是同質的。與 list 不同，tuple 可以包含許多型別的組合。
+
+想想我們要如何 Haskell 裡表示一個二維向量。一種方式是使用一個 list。這也許還可以。所以假設我們想要把一些向量放入一個 list，以表示在二維平面上一個形狀的點呢？我們可能會寫成像 `[[1,2],[8,11],[4,5]]` 這樣。這種方法的問題在於，我們也可以寫成像 `[[1,2],[8,11,5],[4,5]]` 這樣，由於它仍然是一個數字 list 的 list，對於 Haskell 來說這沒有問題，但寫成這樣並沒有意義。不過一個大小為二的 tuple（也被稱為一個 pair）就是它自己的型別，這意味著一個 list 無法有一些 pair 同時又有個 triple（大小為三的 tuple），所以讓我們以它來代替 list。我們並非用方括號來包住一個向量，而是使用括號：`[(1,2),(8,11),(4,5)]`。假使我們嘗試建立一個像是 `[(1,2),(8,11,5),(4,5)]` 的形狀呢？嗯，我們會得到這個錯誤：
+
+<pre name="code" class="haskell: ghci">
+Couldn't match expected type `(t, t1)'
+against inferred type `(t2, t3, t4)'
+In the expression: (8, 11, 5)
+In the expression: [(1, 2), (8, 11, 5), (4, 5)]
+In the definition of `it': it = [(1, 2), (8, 11, 5), (4, 5)]
+</pre>
+
+它告訴我們，我們嘗試在同一個 list 裡使用一個 pair 與一個 triple，這是不應該發生的。你也不能建立一個像是 `[(1,2),("One",2)]` 這樣的 list，因為 list 的第一個元素是數字的 pair，而第二個元素是由一個字串與一個數字組成的 pair。tuple 也可以被用來表示多種資料。舉例來說，假如你想要在 Haskell 裡表示某人的名字與年齡，我們可以使用一個 triple：`("Christopher", "Walken", 55)`。如同這個例子中所看到的，tuple 也可以包含 list。
+
+使用 tuple 應當事先知道一筆資料有多少個元素。tuple 是非常嚴格的，因為每個不同大小的 tuple 都是它自己的型別，所以你無法寫一個通用的 function 來附加一個元素到 tuple 之上──你必須寫一個附加到 pair 的 function、一個附加到 triple 的 function、一個附加到 4-tuple 的 function 等等。
+
+雖然有單一元素的 list，但是沒有像是單一元素的 tuple 這種東西。它在你思考它的時候並不具有多大意義。單一元素的 tuple 僅是它包含的值，而這對我們沒有好處。
+
+如同 list，假如 tuple 的元素可以被比較，它就可以與其它 tuple 比較。只是你雖然可以將兩個不同大小的 list 做比較，而無法將兩個不同大小的 tuple 做比較。這裡有兩個操作在 pair 上的有用 function：
+
+<code class="label function">fst</code> 接收一個 pair 並傳回它的第一個元素。
+
+<pre name="code" class="haskell: ghci">
+ghci> fst (8,11)
+8
+ghci> fst ("Wow", False)
+"Wow"
+</pre>
+
+<code class="label function">snd</code> 接收一個 pair 並傳回它的第二個元素。真令人驚訝！
+
+<pre name="code" class="haskell: ghci">
+ghci> snd (8,11)
+11
+ghci> snd ("Wow", False)
+False
+</pre>
+
+<p class="hint">
+<em>註記：</em>這些 function 只能用來操作 pair。它不能在 triple、4-tuple、5-tuple 等上運作。我們將在稍後看到從 tuple 中提取資料的不同方式。
+</p>
+
+一個很酷的 function：<code class="label function">zip</code>，它會產生一個 pair 的 list。它接收兩個 list，然後藉由將配對的元素加入成一個 pair，把它們合併成一個 list。這是一個非常簡單的 function，但是它很常被使用。這在你想要在某種程度上合併兩個 list 或是同時走訪兩個 list 的時候尤其有用。這裡是個示範：
+
+<pre name="code" class="haskell: ghci">
+ghci> zip [1,2,3,4,5] [5,5,5,5,5]
+[(1,5),(2,5),(3,5),(4,5),(5,5)]
+ghci> zip [1 .. 5] ["one", "two", "three", "four", "five"]
+[(1,"one"),(2,"two"),(3,"three"),(4,"four"),(5,"five")]
+</pre>
+
+它將元素配對並產生一個新的 list。第一個元素被第一個、第二個元素配第二個，以此類推。注意到因為 pair 裡可以有不同的型別，`zip` 可以接收並結合兩個包含不同型別的 list。如果 list 的長度不同會發生什麼事呢？
+
+<pre name="code" class="haskell: ghci">
+ghci> zip [5,3,2,6,2,7,2,5,4,6,6] ["im","a","turtle"]
+[(5,"im"),(3,"a"),(2,"turtle")]
+</pre>
+
+比較長的 list 被截斷以配合比較短的 list 長度。因為 Haskell 是惰性的，我們可以結合有限的 list 與無限的 list：
+
+<pre name="code" class="haskell: ghci">
+ghci> zip [1..] ["apple", "orange", "cherry", "mango"]
+[(1,"apple"),(2,"orange"),(3,"cherry"),(4,"mango")]
+</pre>
+
+<img src="img/pythag.png" alt="look at meee" style="margin:10px auto 25px;display:block" />
+
+這裡有個結合 tuple 與 list comprehension 的問題：哪些每條邊長度皆為整數，且邊長等於或小於 10 的直角三角形，其周長為 24？首先，讓我們試著產生所有邊長等於或小於 10 的三角形：
+
+<pre name="code" class="haskell: ghci">
+ghci> let triangles = [ (a,b,c) | c <- [1..10], b <- [1..10], a <- [1..10] ]
+</pre>
+
+我們從三個 list 引入元素，而我們的輸出函數則將它們結合成一個 triple。如果你在 GHCI 中輸入 `triangles` 求值，你將會得到一個所有邊長小於或等於 10 的三角形 list。接下來，我們加上一個它們必須為直角三角形的條件。我們也修改此 function 以考慮到 b 邊長不大於斜邊，且 a 邊長不大於 b 的情況。
+
+<pre name="code" class="haskell: ghci">
+ghci> let rightTriangles = [ (a,b,c) | c <- [1..10], b <- [1..c], a <- [1..b], a^2 + b^2 == c^2]
+</pre>
+
+我們幾乎完成了。現在，我們修改 function 以表明我們想要周長為 24 的三角形。
+
+<pre name="code" class="haskell: ghci">
+ghci> let rightTriangles' = [ (a,b,c) | c <- [1..10], b <- [1..c], a <- [1..b], a^2 + b^2 == c^2, a+b+c == 24]
+ghci> rightTriangles'
+[(6,8,10)]
+</pre>
+
+而這就是我們的答案了！這是函數式程式設計的一個常見模式。你取得一個起始的解答集合，套用轉換到這些解答上，然後過濾它們，直到你得到正確的結果。
