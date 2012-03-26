@@ -4,6 +4,9 @@ title: 出發
 prev:
     url: introduction
     title: 引言
+next:
+    url: types-and-typeclasses
+    title: 型別與 Typeclass
 ---
 
 ## <a name="ready-set-go">就定位，預備，開始！</a>
