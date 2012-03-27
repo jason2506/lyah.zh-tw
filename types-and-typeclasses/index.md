@@ -113,3 +113,195 @@ fst :: (a, b) -> a
 我們看到 `fst` 接收一個包含兩種型別的 tuple，並傳回一個型別與 pair 第一個元素相同的元素。這就是為什麼我們可以將 `fst` 使用在包含任意兩個型別的 pair 的原因。注意到只因為 `a` 與 `b` 是不同的型別變數，不代表它們必須為不同型別。它僅表達第一個元素的型別與回傳型別是相同的。
 
 ## <a name="typeclasses-101">Typeclasses 101</a>
+
+<img src="img/classes.png" alt="class" style="float:right" />
+一個 typeclass 是一種定義某種行為的介面（interface）。假如一個型別屬於某個 typeclass，則意味著它支援並實作了 typeclass 所描述的行為。很多來自於 OOP 的人對 typeclass 感到困惑，因為它就像是物件導向語言（object oriented language）裡的類別（class）。嗯，但它不是。你可以把它想成某種類似 Java interface，只是比它更好的東西。
+
+`==` function 的型別簽名（signature）是什麼呢？
+
+<pre name="code" class="haskell: ghci">
+ghci> :t (==)
+(==) :: (Eq a) => a -> a -> Bool
+</pre>
+
+<p class="hint">
+<em>註記：</em>相等運算子──<code>==</code> 為一個 function。<code>+</code>、<code>*</code>、<code>-</code>、<code>/</code> 與幾乎所有的運算子也都是 function。假使一個 function 只由特殊字元組成，其預設被視為中綴 function。假如想要檢驗它們的型別、將它傳遞到另一個 function、或是作為前綴 function 來呼叫它，我們必須將它包在括號裡。
+</p>
+
+有意思。這裡我們看到一個新東西，`=>` 符號。在 `=>` 符號之前的所有東西被稱為一個*類別約束（class constraint）*。我們可以像這樣閱讀先前的型別宣告：`==` 接收任兩個相同型別的值，並回傳一個 `Bool`。這兩個值的型別必須是 `Eq` class 的一個成員（這就是類別約束）。
+
+`Eq` typeclass 提供一個測試相等性的介面。任何具有測試兩個值相等性意義的型別都應該是 `Eq` class 的成員。除了 IO（處理輸入與輸出的型別）與 function 之外，所有 Haskell 的標準型別都屬於`Eq` typeclass。
+
+因為 `elem` function 將 `==` 使用在一個 list 之上，以檢查我們正在尋找的某個值是否在此 list 之中，所以它的型別為 `(Eq a) => a -> [a] -> Bool`。
+
+幾個基本的 typeclass 如下：
+
+<code class="label class">Eq</code> 被用在支援相等性測試的型別。其成員實作的 function 為 `==` 與 `/=`。所以如果在一個 function 裡有個針對某型別的 `Eq` 類別約束，代表這個 function 在定義中的某處使用了 `==` 或 `/=`。除了 function 以外，我們先前提到的所有型別皆屬於 `Eq`，所以它們可以被測試相等性。
+
+<pre name="code" class="haskell: ghci">
+ghci> 5 == 5
+True
+ghci> 5 /= 5
+False
+ghci> 'a' == 'a'
+True
+ghci> "Ho Ho" == "Ho Ho"
+True
+ghci> 3.432 == 3.432
+True
+</pre>
+
+<code class="label class">Ord</code> 代表擁有順序的型別。
+
+<pre name="code" class="haskell: ghci">
+ghci> :t (>)
+(>) :: (Ord a) => a -> a -> Bool
+</pre>
+
+除了 function 以外，我們先前涵蓋的所有型別皆屬於 `Ord`。`Ord` 涵蓋所有標準的比較大小的 function，像是 `>`、`<`、`>=` 與 `<=`。`compare` function 接收兩個相同型別的 `Ord` 成員，並回傳一個比較大小的結果。
+<code class="label type">Ordering</code> 為一個可以為 `GT`、`LT` 或 `EQ` 的型別，分別代表<i>大於</i>、<i>小於</i>與<i>等於</i>。
+
+要成為 `Ord` 的成員，一個型別必須先加入著名又時髦的 `Eq` 俱樂部。
+
+<pre name="code" class="haskell: ghci">
+ghci> "Abrakadabra" < "Zebra"
+True
+ghci> "Abrakadabra" `compare` "Zebra"
+LT
+ghci> 5 >= 2
+True
+ghci> 5 `compare` 3
+GT
+</pre>
+
+<code class="label class">Show</code> 的成員可以作為字串表示。除了 function 之外，到目前為止涵蓋的所有型別都屬於 `Show`。最常用來處理 `Show` typeclass 的 function 為 `show`。它接收一個型別為 `Show` 成員的值，並以一個字串表示這個值。
+
+<pre name="code" class="haskell: ghci">
+ghci> show 3
+"3"
+ghci> show 5.334
+"5.334"
+ghci> show True
+"True"
+</pre>
+
+<code class="label class">Read</code> 是與 `Show` 相對的 typeclass。`read` function 接收一個字串並傳回一個為 `Read` 成員的型別。
+
+<pre name="code" class="haskell: ghci">
+ghci> read "True" || False
+True
+ghci> read "8.2" + 3.8
+12.0
+ghci> read "5" - 2
+3
+ghci> read "[1,2,3,4]" ++ [3]
+[1,2,3,4,3]
+</pre>
+
+一切都很好。再一次，目前為止涵蓋的所有型別皆在這個 typeclass 中。不過如果我們試著執行 `read "4"` 會發生什麼事？
+
+<pre name="code" class="haskell: ghci">
+ghci> read "4"
+&lt;interactive&gt;:1:0:
+    Ambiguous type variable `a' in the constraint:
+      `Read a' arising from a use of `read' at &lt;interactive&gt;:1:0-7
+    Probable fix: add a type signature that fixes these type variable(s)
+</pre>
+
+這裡 GHCI 告訴我們的是，它不知道我們想要的是什麼傳回值。注意到先前使用 `read` 時，我們會在其結果之後做某些事。經由這種方式，GHCI 可以推論我們想要從 `read` 得到的是哪種結果。假使我們作為一個布林值來使用它，它便知道它必須回傳一個 `Bool`。但是現在，它知道我們想要某個屬於 `Read` class 的型別，只是不知道是哪一個。讓我們看看 `read` 的型別簽名：
+
+<pre name="code" class="haskell: ghci">
+ghci> :t read
+read :: (Read a) => String -> a
+</pre>
+
+看到了嗎？它回傳一個屬於 `Read` 的型別，不過如果我們並未在之後嘗試以某種方式使用它，它就沒有方法知道是哪個型別。這就是為什麼我們要使用明確的*型別註釋（type annotation）*。型別註釋為一種明確表示一個 expression 型別該是什麼的方式。我們藉由在 expression 後面加上 `::` 然後指定一個型別以做到這件事。看看吧：
+
+<pre name="code" class="haskell: ghci">
+ghci> read "5" :: Int
+5
+ghci> read "5" :: Float
+5.0
+ghci> (read "5" :: Float) * 4
+20.0
+ghci> read "[1,2,3,4]" :: [Int]
+[1,2,3,4]
+ghci> read "(3, 'a')" :: (Int, Char)
+(3, 'a')
+</pre>
+
+大多數 expression 都能夠讓編譯器自己可以推論它們的型別。但有時候，對於一個像是 `read "5"` 這樣的 expression，編譯器無法知道要傳回一個 `Int` 或是 `Float` 型別的值。為了得知是哪種型別，Haskell 必須實際去對 `read "5"` 求值。但由於 Haskell 是一種靜態型別語言，它必須在程式碼被編譯（或是在 GHCI 被求值的情況）之前知道所有的型別。所以我們必須告訴 Haskell：「嘿，這個 expression 應該是這個型別，如果你不知道的話！」
+
+<code class="label class">Enum</code> 成員為照順序排列的型別──它們可以被列舉。`Enum` typeclass 的主要好處是我們可以在 list range 裡使用它的型別。它也定義了後繼子與前置子（predecesor）──你可以用 `succ` 與 `pred` function 取得。在這個 class 的類別有：`()`、`Bool`、`Char`、`Ordering`、`Int`、`Integer`、`Float` 與 `Double`。
+
+<pre name="code" class="haskell: ghci">
+ghci> ['a'..'e']
+"abcde"
+ghci> [LT .. GT]
+[LT,EQ,GT]
+ghci> [3 .. 5]
+[3,4,5]
+ghci> succ 'B'
+'C'
+</pre>
+
+<code class="label class">Bounded</code> 成員擁有一個上界與下界。
+
+<pre name="code" class="haskell: ghci">
+ghci> minBound :: Int
+-2147483648
+ghci> maxBound :: Char
+'\1114111'
+ghci> maxBound :: Bool
+True
+ghci> minBound :: Bool
+False
+</pre>
+
+`minBound` 與 `maxBound` 很有趣，因為它們的型別為 `(Bounded a) => a`。在某種意義上，它們都是多型常數（constants）。
+
+若 tuple 裡的元素屬於 `Bounded`，則此 tuple 也屬於 `Bounded`。
+
+<pre name="code" class="haskell: ghci">
+ghci> maxBound :: (Bool, Int, Char)
+(True,2147483647,'\1114111')
+</pre>
+
+<code class="label class">Num</code> 為一個數字的 typeclass。它的成員擁有能夠作為數字的特性。讓我們來檢驗一個數字的型別：
+
+<pre name="code" class="haskell: ghci">
+ghci> :t 20
+20 :: (Num t) => t
+</pre>
+
+看來所有數字都是多型常數。它們可以作為任何屬於 `Num` typeclass 的型別。
+
+<pre name="code" class="haskell: ghci">
+ghci> 20 :: Int
+20
+ghci> 20 :: Integer
+20
+ghci> 20 :: Float
+20.0
+ghci> 20 :: Double
+20.0
+</pre>
+
+這些都是屬於 `Num` typeclass 的型別。如果我們檢驗 `*` 的型別，我們會看到它接受一切數字：
+
+<pre name="code" class="haskell: ghci">
+ghci> :t (*)
+(*) :: (Num a) => a -> a -> a
+</pre>
+
+它接收兩個相同型別的數字，並傳回此型別的一個數字。這就是為什麼 `(5 :: Int) * (6 :: Integer)` 會產生一個型別錯誤，而 `5 * (6 :: Integer)` 卻能運作良好並產生一個 `Integer` 的原因，因為 `5` 能夠作為一個 `Integer` 或是一個 `Int`。
+
+想加入 `Num`，一個型別必須已經跟 `Show` 與 `Eq` 打好關係。
+
+<code class="label class">Integral</code> 也是一個數字的 typeclass。`Num` 包含所有的數字，包含實數與整數，而 `Integral` 只包含（所有的）整數。`Int` 與 `Integer` 屬於此 typeclass。
+
+<code class="label class">Floating</code> 只包含浮點數，所以是 `Float` 與 `Double`。
+
+有個能處理數字的有用 function 是 <code class="label function">fromIntegral</code>。它的型別宣告為 `fromIntegral :: (Num b, Integral a) => a -> b`。從它的型別簽名，我們發現它接收一個整數，並將它轉成更一般化的數字。這在我們想要讓整數與浮點數型別一起良好運作的時候是有用的。舉例來說，`length` function 的型別宣告為 `length :: [a] -> Int`，而不是 `(Num b) => length :: [a] -> b`。我想這是為了歷史因素或是其他什麼的──但在我看來，這十分愚蠢。總之，假如我們嘗試取得一個 list 的長度再加上 `3.2`，我們將會得到一個錯誤，因為我們嘗試將一個 `Int` 與一個浮點數加在一起。所以為了避開這個錯誤，我們執行 `fromIntegral (length [1,2,3,4]) + 3.2` 就全都解決了。
+
+注意到 `fromIntegral` 在它的型別簽名中有許多類別約束，這是完全合法的。如你所見，類別約束在括號內以逗點隔開。
