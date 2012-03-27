@@ -91,4 +91,25 @@ tuple 為型別，不過它取決於它們的長度以及元素的型別，所�
 
 ## <a name="type-variables">型別變數</a>
 
+你覺得 `head` function 的型別是什麼？因為 `head` 接收一個任意型別的 list，並傳回第一個元素，所以它會是什麼呢？讓我們確認看看！
+
+<pre name="code" class="haskell: ghci">
+ghci> :t head
+head :: [a] -> a
+</pre>
+
+<img src="img/box.png" alt="box" style="float:left" />
+唔！這個 `a` 是什麼？它是一個型別嗎？還記得我們先前所說，型別被寫成首字母大寫，所以它不完全是個型別。因為其並非首字母大寫，所以它實際上是一個*型別變數（type variable）*。這代表 `a` 可以是任何型別。這非常像其他語言中的泛型（generic），只是在 Haskell 中它更為強大，因為它允許我們輕易地撰寫非常一般化的 function，只要這個 function 沒有在其中使用到任何型別的特定行為。擁有型別變數的 function 被稱為*多型（polymorphic）function*。`head` 的型別宣告表達它接收一個任意型別的 list，並傳回一個相同型別的元素。
+
+雖然型別變數可以有一個字元以上的名稱，我們通常還是取名叫做 a、b、c、d....
+
+記得 `fst` 嗎？其傳回一個 pair 的第一個元素。讓我們來檢驗它的型別。
+
+<pre name="code" class="haskell: ghci">
+ghci> :t fst
+fst :: (a, b) -> a
+</pre>
+
+我們看到 `fst` 接收一個包含兩種型別的 tuple，並傳回一個型別與 pair 第一個元素相同的元素。這就是為什麼我們可以將 `fst` 使用在包含任意兩個型別的 pair 的原因。注意到只因為 `a` 與 `b` 是不同的型別變數，不代表它們必須為不同型別。它僅表達第一個元素的型別與回傳型別是相同的。
+
 ## <a name="typeclasses-101">Typeclasses 101</a>
