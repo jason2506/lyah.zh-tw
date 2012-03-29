@@ -4,6 +4,9 @@ title: 型別與 Typeclass
 prev:
     url: starting-out
     title: 出發
+next:
+    url: syntax-in-functions
+    title: Function 中的語法
 ---
 
 ## <a name="believe-the-type">相信型別</a>
