@@ -182,7 +182,84 @@ ghci> capital "Dracula"
 
 還有一件事──你不能在模式匹配中使用 `++`。假如你嘗試要匹配 `(xs ++ ys)`，第一個 list 應該要是什麼，而第二個 list 應該是什麼？它並沒有太多意義。匹配 `(xs ++ [x,y,z])` 或僅是 `(xs ++ [x])` 可能有意義，不過因為 list 的本質，你不能這樣做。
 
-## <a name="guards-guards">Guards, guards!</a>
+## <a name="guards-guards">Guards，guards！</a>
+
+<img src="img/guards.png" alt="guards" style="float:left" />
+模式是一種確定某個值符合某種形式，並將其解構的方式；而 guard 則是測試一個值（或很多值）的某些屬性是否為真的方式。這聽起來非常像一個 if 敘述，它們也十分相似。事實是當你有許多條件時，guard 更加容易閱讀，而且與模式搭配良好。
+
+讓我們直接深入並建立一個使用 guard 的 function，而不是解釋它的語法。我們打算建立一個根據你的 [BMI](http://en.wikipedia.org/wiki/Body_mass_index)（body mass index）來斥責你的簡單 function。你的 BMI 等於你的體重除以你身高的平方。假如你的 BMI 小於 18.5，你就被視為過輕。假如它介於 18.5 到 25 之間，則你被視為適中。25 到 30 為過重，而超過 30 就是肥胖。所以這就是這個 function（我們現在還不想計算 BMI 值，這個 function 僅取得這個值並告訴你結果）：
+
+<pre name="code" class="haskell: hs">
+bmiTell :: (RealFloat a) => a -> String
+bmiTell bmi
+    | bmi <= 18.5 = "You're underweight, you emo, you!"
+    | bmi <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | bmi <= 30.0 = "You're fat! Lose some weight, fatty!"
+    | otherwise   = "You're a whale, congratulations!"
+</pre>
+
+guard 以緊跟著 function 名稱與其參數之後的 `|` 表示。它們通常都向右縮排一格並排成一列。一個 guard 基本上是一個布林 expression。假如它被求值為 `True`，則對應的 function 主體就會被使用。假如它被求值為 `False`，則繼續檢查下一個 guard，以此類推。假如你以 `24.3` 呼叫這個 function，它首先會檢查它是否小於或等於 `18.5`。並非如此，所以它落到下一個 guard。檢查進行到第二個 guard，並且因為 24.3 小於 25.0，所以傳回了第二個字串。
+
+這不禁讓人聯想到命令式語言中的一棵大的 if else 樹，只不過這樣更好且更易讀。而大的 if else 樹通常令人皺眉，有時候一個問題被定義在這樣一個鬆散的方法中，而你無法避開它。guard 則是針對此的一個非常好的替代方案。
+
+最後一個 guard 往往是 `otherwise`。`otherwise` 被簡單地定義成 `otherwise = True` 並捕捉任何情況。這與模式十分相似，只是後者檢查的是輸入是否滿足某個模式，而 guard 檢查的則是布林條件。假如一個 function 的所有 guard 都被求值為 `False`（而我們沒有提供一個捕捉所有情況的 `otherwise` guard），則會落到下一個*模式*求值。這即是模式與 guard 搭配良好的方式。如果沒有找到合適的 guard 或是模式，則會拋出一個錯誤。
+
+我們當然可以在接收的參數數量如同我們所需的 function 使用 guard。讓我們修改這個 function，讓它接收一身高與體重，並為我們計算 BMI 值，而不是讓使用者在呼叫 function 前自行計算它。
+
+<pre name="code" class="haskell: hs">
+bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+    | weight / height ^ 2 <= 18.5 = "You're underweight, you emo, you!"
+    | weight / height ^ 2 <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | weight / height ^ 2 <= 30.0 = "You're fat! Lose some weight, fatty!"
+    | otherwise                 = "You're a whale, congratulations!"
+</pre>
+
+讓我們看看我是不是很胖....
+
+<pre name="code" class="haskell: ghci">
+ghci> bmiTell 85 1.90
+"You're supposedly normal. Pffft, I bet you're ugly!"
+</pre>
+
+呀！我並不胖！不過 Haskell 說我很醜。無所謂啦！
+
+注意到在 function 名稱與其參數之後、在第一個 guard 之前並沒有 `=`。許多新手有時候會因為多加了這個而得到語法錯誤。
+
+另一個十分簡單的例子：讓我們實作我們自己的 `max` function。假如你還記得，其接收可以被比較的兩個值，並傳回比較大的那個。
+
+<pre name="code" class="haskell: hs">
+max' :: (Ord a) => a -> a -> a
+max' a b
+    | a > b     = a
+    | otherwise = b
+</pre>
+
+guard 也可以被寫成一行，雖然我並不建議這樣，因為即使是非常短的 function，它也不太易讀。不過為了證明，我們可以像這樣撰寫 `max'`：
+
+<pre name="code" class="haskell: hs">
+max' :: (Ord a) => a -> a -> a
+max' a b | a > b = a | otherwise = b
+</pre>
+
+噁！一點也不好讀！繼續前進：讓我們使用 guard 實作我們自己的 `compare`。
+
+<pre name="code" class="haskell: hs">
+myCompare :: (Ord a) => a -> a -> Ordering
+a `myCompare` b
+    | a > b     = GT
+    | a == b    = EQ
+    | otherwise = LT
+</pre>
+
+<pre name="code" class="haskell: ghci">
+ghci> 3 `myCompare` 2
+GT
+</pre>
+
+<p class="hint">
+<em>註記：</em>我們不只可以用反引號以中綴形式呼叫 function，我們也可以用反引號定義它。有時候這種方式更容易閱讀。
+</p>
 
 ## <a name="where">Where!?</a>
 
