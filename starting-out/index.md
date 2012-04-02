@@ -172,7 +172,7 @@ doubleUs x y = doubleMe x + doubleMe y
 
 這是一個非常簡單的範例，此種模式你會經常在整個 Haskell 見到。建立一個明顯是正確的基礎 function，然後將它們結合成更複雜的 function。這種方法也讓你免於重複撰寫。假如某些數學家發覺 2 其實是 3，讓你必須去修改你的程式怎麼辦？你可以只將 `doubleMe` 重新定義成 `x + x + x`，同時因為 `doubleUs` 呼叫了 `doubleMe`，它自動而然地能夠在這個 2 是 3 的奇怪新世界上運作。
 
-在 Haskell 中的 function 並沒有任何特殊的順序，所以它並不在乎你是先定義 `doubleMe` 才定義 `doubleUs`，還是採用了其他定義的方式。
+在 Haskell 中的 function 並沒有任何特殊的順序，所以它並不在乎你是先定義 `doubleMe` 才定義 `doubleUs`，還是相反過來。
 
 現在我們準備要建立一個將某數乘以二的 function，不過只有在這個數字小於或等於 100 的情況，因為大於 100 的數字已經足夠大了！
 
