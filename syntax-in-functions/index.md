@@ -263,6 +263,79 @@ GT
 
 ## <a name="where">Where!?</a>
 
+在前一節中，我們定義了一個像這樣的 BMI 計算器 function：
+
+<pre name="code" class="haskell: hs">
+bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+    | weight / height ^ 2 <= 18.5 = "You're underweight, you emo, you!"
+    | weight / height ^ 2 <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | weight / height ^ 2 <= 30.0 = "You're fat! Lose some weight, fatty!"
+    | otherwise                   = "You're a whale, congratulations!"
+</pre>
+
+注意到我們這裡重複了三次。我們重複了三次。在程式撰寫時重複（三次）有如頭部中了一腳。既然我們重複了三次相同的 expression，如果我們能夠將它一次算好、綁定到某個名稱，然後使用這個名稱而不是 expression 是比較理想的。嗯，我們可以像這樣修改我們的 function：
+
+<pre name="code" class="haskell: hs">
+bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+    | bmi <= 18.5 = "You're underweight, you emo, you!"
+    | bmi <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | bmi <= 30.0 = "You're fat! Lose some weight, fatty!"
+    | otherwise   = "You're a whale, congratulations!"
+    where bmi = weight / height ^ 2
+</pre>
+
+我們在 guard 後面放置關鍵字 `where`（通常將它的縮排與 `|` 一致是最好的），然後我們定義多個名稱或是 function。這些名稱對所有的 guard 都是可見的，並給了我們不必重複撰寫的優點。假使我們決定以些許不同的方式計算 BMI 值，我們只需要修改它一次。它也藉由命名提昇了可讀性，並能夠因為像是我們的 `bmi` 變數在這裡只被計算一次，使我們的程式更加快速。我們可以更進一步，像這樣呈現我們的 function：
+
+<pre name="code" class="haskell: hs">
+bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+    | bmi <= skinny = "You're underweight, you emo, you!"
+    | bmi <= normal = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | bmi <= fat    = "You're fat! Lose some weight, fatty!"
+    | otherwise     = "You're a whale, congratulations!"
+    where bmi = weight / height ^ 2
+          skinny = 18.5
+          normal = 25.0
+          fat = 30.0
+</pre>
+
+我們定義在 function 中 where 部分的名稱只在這個 function 可見，所以我們不必擔心它污染其他 function 的名稱空間（namespace）。注意到所有的名稱都對齊同一欄。假如我們沒有好好對齊它們，Haskell 會被搞混，因為它無法知道它們全都是同個區塊（block）的一部分。
+
+<i>where</i> 綁定並不會共享於不同模式的 function 主體。如果你想要一個 function 的多個模式存取某些共享的名稱，你必須將它定義為全域。
+
+你也可以在 where 綁定使用*模式匹配*！我們可以改寫我們先前 function 的 where 部分為：
+
+<pre name="code" class="haskell: hs">
+...
+where bmi = weight / height ^ 2
+      (skinny, normal, fat) = (18.5, 25.0, 30.0)
+</pre>
+
+讓我們建立另一個相當沒用的 function，它接收一個姓氏與一個名字，並傳回給某人他的縮寫。
+
+<pre name="code" class="haskell: hs">
+initials :: String -> String -> String
+initials firstname lastname = [f] ++ ". " ++ [l] ++ "."
+    where (f:_) = firstname
+          (l:_) = lastname
+</pre>
+
+我們可以直接在 function 的參數裡達成這個模式匹配（它實際上會更短也更清楚），不過這只是想證明在 where 綁定做到這件事也是可能的。
+
+如同我們在 where 區塊裡定義常數，你也可以定義 function。繼續健康的程式題材，讓我們建立一個接收一串體重－身高 pair 的 list，並傳回一串 BMI list 的 function。
+
+<pre name="code" class="haskell: hs">
+calcBmis :: (RealFloat a) => [(a, a)] -> [a]
+calcBmis xs = [bmi w h | (w, h) <- xs]
+    where bmi weight height = weight / height ^ 2
+</pre>
+
+就只有這樣而已！在這個範例中，我們必須將 `bmi` 引入為一個 function 的原因，是因為我們無法僅從 function 的參數計算出一個 BMI 值。我們必須檢驗傳遞到 function 的 list，而對於其中的每個 pair 都有不同的 BMI 值。
+
+<i>where</i> 綁定也可以是巢狀的。建立一個 function 並在其 where 子句（clause）中定義某些輔助 function，然後也給這些 function 一些輔助 function，每個 function 都有各自的 where 子句，這是一個常見的慣用寫法。
+
 ## <a name="let-it-be">Let it be</a>
 
 ## <a name="case-expressions">Case expressions</a>
