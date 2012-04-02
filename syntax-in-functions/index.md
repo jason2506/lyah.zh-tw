@@ -338,5 +338,85 @@ calcBmis xs = [bmi w h | (w, h) <- xs]
 
 ## <a name="let-it-be">Let it be</a>
 
+let 綁定與 where 綁定十分相似。where 綁定是一種語法結構，允許你在一個 function 的最後綁定變數，且包含所有 guard 的整個 function 都能看到它。let 綁定則允許你在任何地方綁定變數，且其本身就是個 expression，但它是非常局部的，所以無法跨越多個 guard。就如同 Haskell 中任何用來將值綁定到名稱上的結構，let 綁定也可以搭配模式匹配。讓我們實際看看它！這是我們如何定義一個基於圓柱的高度與半徑告訴我們其表面積的 function 的方式：
+
+<pre name="code" class="haskell: hs">
+cylinder :: (RealFloat a) => a -> a -> a
+cylinder r h =
+    let sideArea = 2 * pi * r * h
+        topArea = pi * r ^2
+    in  sideArea + 2 * topArea
+</pre>
+
+<img src="img/letitbe.png" alt="let it be" style="float:right" />
+<i>let</i> 綁定的格式為 `let <bindings> in <expression>`。你定義在 <i>let</i> 部分的名稱對於在 <i>in</i> 之後的 expression 是可存取的。如你所見，我們也可以以一個 <i>where</i> 綁定來定義它。注意到名稱也被對齊為同一欄。所以兩者之間有什麼不同呢？到現在看起來只是 <i>let</i> 先將綁定擺在前面，然後 expression 在之後使用它，而 <i>where</i> 則相反過來。
+
+不同之處在於 <i>let</i> 綁定本身為 expression。<i>where</i> 綁定只是個語法結構。還記得當我們提到 if 敘述時，一個 if else 敘述被解釋為一個 expression，而你可以把它塞到幾乎任何地方？
+
+<pre name="code" class="haskell: ghci">
+ghci> [if 5 > 3 then "Woo" else "Boo", if 'a' > 'b' then "Foo" else "Bar"]
+["Woo", "Bar"]
+ghci> 4 * (if 10 > 5 then 10 else 0) + 2
+42
+</pre>
+
+你也可以用 let 綁定做到。
+
+<pre name="code" class="haskell: ghci">
+ghci> 4 * (let a = 9 in a + 1) + 2
+42
+</pre>
+
+它也可以被用來引入在一個區域作用域（scope）中的 function：
+
+<pre name="code" class="haskell: ghci">
+ghci> [let square x = x * x in (square 5, square 3, square 2)]
+[(25,9,4)]
+</pre>
+
+若是我們想在同一行綁定多個變數，我們顯然不能將它們對齊至同一欄。這就是為什麼我們必須以分號分隔它們。
+
+<pre name="code" class="haskell: ghci">
+ghci> (let a = 100; b = 200; c = 300 in a*b*c, let foo="Hey "; bar = "there!" in foo ++ bar)
+(6000000,"Hey there!")
+</pre>
+
+你不必在最後一個綁定後面加上分號，不過如果你想也無妨。如同我們先前所說，你可以在 <i>let</i> 綁定進行模式匹配。對於快速拆解一個 tuple 並將它們綁定到名稱之類的操作來說，這是非常有用的。
+
+<pre name="code" class="haskell: ghci">
+ghci> (let (a,b,c) = (1,2,3) in a+b+c) * 100
+600
+</pre>
+
+你也可以將 <i>let</i> 綁定擺在 list comprehension 之中。讓我們改寫我們先前計算一串體重－身高 pair list 的範例，以在一個 list comprehension 中使用 <i>let</i>，而不是用 <i>where</i> 定義一個輔助 function。
+
+<pre name="code" class="haskell: hs">
+calcBmis :: (RealFloat a) => [(a, a)] -> [a]
+calcBmis xs = [bmi | (w, h) <- xs, let bmi = w / h ^ 2]
+</pre>
+
+很像我們想令述部包含於 list comprehension 中的方式，我們令 <i>let</i> 包含於 list comprehension 之中，只不過它不會過濾這個 list，它只會綁定到名稱上。定義於 list comprehension 中 <i>let</i> 的名稱對於輸出函數（在 `|` 之前的部份）、所有的述部與綁定之後的部分皆是可見的。所以我們可以建立我們的 function，它只傳回胖子的 BMI 值：
+
+<pre name="code" class="haskell: hs">
+calcBmis :: (RealFloat a) => [(a, a)] -> [a]
+calcBmis xs = [bmi | (w, h) <- xs, let bmi = w / h ^ 2, bmi >= 25.0]
+</pre>
+
+我們無法在 `(w, h) <- xs` 之中使用 `bmi` 這個名稱，因為它被定義在 <i>let</i> 之前。
+
+當我們在 list comprehension 中使用 <i>let</i> 綁定時，我們省略了其中的 <i>in</i> 部分，因為名稱的可見性（visibility）已經被預先定義好了。然而，我們可以在述部中使用 <i>let in</i> 綁定，且這個名稱只對於這個述部可見。直接在 GHCi 定義 function 與常數時也可以忽略 <i>in</i> 部分。假使我們這麼做，則此名稱將會在整個互動會話（session）中可見。
+
+<pre name="code" class="haskell: ghci">
+ghci> let zoot x y z = x * y + z
+ghci> zoot 3 9 2
+29
+ghci> let boot x y z = x * y + z in boot 3 4 2
+14
+ghci> boot
+&lt;interactive&gt;:1:0: Not in scope: `boot'
+</pre>
+
+你問道：若是 <i>let</i> 綁定這麼酷，為什麼不是無時無刻都使用它，而要用 <i>where</i> 綁定呢？嗯，由於 <i>let</i> 綁定為 expression，且非常侷限於它的作用域，所以它無法被使用在多個 guard 之間。某些人比較偏好 <i>where</i> 綁定，因為名稱就在它們想要使用的 function 之後。這種方式的 function 主體比較接近它們的名稱與型別宣告，且在某些情況下這樣比較好讀。
+
 ## <a name="case-expressions">Case expressions</a>
 
