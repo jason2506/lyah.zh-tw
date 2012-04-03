@@ -420,3 +420,49 @@ ghci> boot
 
 ## <a name="case-expressions">Case expressions</a>
 
+<img src="img/case.png" alt="case" style="float:right" />
+很多命令語言（C、C++、Java 等）都有 case 語法，如果你曾經有過其中的程式經驗，你可能知道那是什麼。它即是接收一個變數，執行針對此變數特定值的程式區塊，然後或許會包含一個捕獲所有情況的程式區塊，以應付某個我們沒有考慮到的變數值。
+
+Haskell 取了這個概念，並更勝它一籌。就跟名稱看起來的一樣，case expression 就是個....嗯....expression，就像是 if else expression 與 <i>let</i> 綁定。我們不只可以基於一個變數值的可能情況求得 expression 的值，我們也可以進行模式匹配。唔，接收一個變數、對它進行模式匹配、根據它的值求出某段程式的值，我們之前在哪有聽過這個嗎？喔耶，就是在 function 定義中對參數的模式匹配！嗯，這實際上只是個 case expression 的語法糖衣。這兩段程式做同樣的事情，是可以互換的：
+
+<pre name="code" class="haskell: hs">
+head' :: [a] -> a
+head' [] = error "No head for empty lists!"
+head' (x:_) = x
+</pre>
+
+<pre name="code" class="haskell: hs">
+head' :: [a] -> a
+head' xs = case xs of [] -> error "No head for empty lists!"
+                      (x:_) -> x
+</pre>
+
+你可以看到，case expression 的語法極為簡單：
+
+<pre name="code" class="haskell: hs">
+case expression of pattern -> result
+                   pattern -> result
+                   pattern -> result
+                   ...
+</pre>
+
+`expression` 與模式相匹配。模式匹配與預期的行為相同：第一個匹配 expression 的模式會被採用。假如整個 case expression 都沒有合適的模式被找到，則會發生一個執行期錯誤。
+
+在 function 參數上的模式匹配僅能在定義 function 使用，而 case expression 則可以被用在幾乎任何地方。舉例來說：
+
+<pre name="code" class="haskell: hs">
+describeList :: [a] -> String
+describeList xs = "The list is " ++ case xs of [] -> "empty."
+                                               [x] -> "a singleton list."
+                                               xs -> "a longer list."
+</pre>
+
+對於在 expression 之中的某值進行模式匹配來說，它是非常有用的。因為在 function 定義中的模式匹配是個 case expression 的語法糖衣，我們也可以將它定義成這樣：
+
+<pre name="code" class="haskell: hs">
+describeList :: [a] -> String
+describeList xs = "The list is " ++ what xs
+    where what [] = "empty."
+          what [x] = "a singleton list."
+          what xs = "a longer list."
+</pre>
