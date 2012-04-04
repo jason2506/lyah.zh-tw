@@ -4,6 +4,9 @@ title: Function 中的語法
 prev:
     url: types-and-typeclasses
     title: 型別與 Typeclass
+next:
+    url: recursion
+    title: 遞迴
 ---
 
 ## <a name="pattern-matching">模式匹配</a>
