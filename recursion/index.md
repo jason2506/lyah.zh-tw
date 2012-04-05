@@ -17,6 +17,40 @@ prev:
 
 ## <a name="maximum-awesome">Maximum 真棒</a>
 
+`maximum` function 接收某個可以被排序的 list（例如 `Ord` typeclass 的實體〔instance〕），並傳回其中最大的值。想想你要如何以命令式的方式實作它。你可能會設定一個變數以保留到目前為止的最大值，然後你會走遍 list 中的元素，若是某個元素大於當前的最大值，你會以這個元素來取代它。保留到最後的最大值即是結果。呼！用了不少文字來描述這樣一個簡單的演算法！
+
+現在讓我們看看我們要如何遞迴地定義它。我們可以先設定一個邊界條件，表示一個單一元素的 list 的最大值等於其中的唯一元素。然後我們可以說，
+若是一個比較長的 list 的 head 大於 tail 的最大值，則最大值為 head。若是 tail 的最大值比較大，嗯，則此 list 的最大值為 tail 的最大值。就這樣了！現在讓我們在 Haskell 中實作它。
+
+<pre name="code" class="haskell:hs">
+maximum' :: (Ord a) => [a] -> a
+maximum' [] = error "maximum of empty list"
+maximum' [x] = x
+maximum' (x:xs)
+    | x > maxTail = x
+    | otherwise = maxTail
+    where maxTail = maximum' xs
+</pre>
+
+你可以看到，模式匹配與遞迴十分相配！許多命令式語言沒有模式匹配，所以你必須建立許多 if else 敘述來測試邊界條件。這裡我們僅需要把它們寫成模式。所以第一個邊界條件表示，如果 list 為空，崩潰！有道理，一個空 list 的最大值是什麼呢？我不知道。第二個模式也設定了一個邊界條件。它表示如果它是一個單一元素的 list，就傳回唯一的元素。
+
+現在，第三個模式為動作實際發生的地方。我們使用模式匹配來將一個 list 切割為 head 與 tail。這在對 list 執行遞迴時，是個十分常見的慣用寫法，所以習慣它吧。我們使用一個 <i>where</i> 綁定來將 `maxTail` 定義成 list 其餘部分的最大值。然後我們檢查 head 是否大於 list 其餘部分的最大值。若是，我們就回傳 head。否則，我們就傳回 list 其餘部分的最大值。
+
+讓我們取一串數字的範例 list：`[2,5,1]`，並檢查看看它會如何運作。若是我們對它呼叫 `maximum'`，前兩個模式都不會被匹配。而第三個模式會，且 list 被切割成 `2` 與 `[5,1]`。<i>where</i> 子句想知道 `[5,1]` 的最大值，所以我們繼續下去。其再次匹配了第三個模式，且 `[5,1]` 被切割成 `5` 與 `[1]`。再一次的，<i>where</i> 子句想知道 `[1]` 的最大值。因為這是個邊界條件，所以它會回傳 `1`。終於！所以我們回到前一步，比較 `5` 與 `[1]` 的最大值（為 `1`），顯然我們會得到 `5`。所以現在我們知道 `[5,1]` 的最大值為 `5`。我們再回到前一步，那裡我們有 `2` 與 `[5,1]`。比較 `2` 與 `[5,1]` 的最大值，為 `5`，於是我們選擇了 `5`。
+
+撰寫這個 function 的一個更清楚的方式是使用 `max`。如果你還記得，`max` 為一個接收兩個數字，並傳回之中比較大的值的 function。以下是我們如何使用 `max` 改寫 `maximum'`：
+
+<pre name="code" class="haskell:hs">
+maximum' :: (Ord a) => [a] -> a
+maximum' [] = error "maximum of empty list"
+maximum' [x] = x
+maximum' (x:xs) = max x (maximum' xs)
+</pre>
+
+如此的優雅！本質上，一個 list 的最大值即為第一個元素與 tail 最大值的最大值。
+
+<img src="img/maxs.png" alt="max" style="margin:10px auto 25px;display:block" />
+
 ## <a name="a-few-more-recursive-functions">再來一點遞迴 function</a>
 
 ## <a name="quick-sort">快速，排序！</a>
