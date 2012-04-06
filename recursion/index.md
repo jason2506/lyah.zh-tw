@@ -53,6 +53,77 @@ maximum' (x:xs) = max x (maximum' xs)
 
 ## <a name="a-few-more-recursive-functions">再來一點遞迴 function</a>
 
+現在我們大體而言知道如何遞迴地思考，讓我們實作一些使用遞迴的 function。首先，我們要實作 `replicate`。`replicate` 接收一個 `Int` 與某個元素，並傳回一個擁有許多相同元素重複的 list。舉例來說，`replicate 3 5` 傳回 `[5,5,5]`。讓我們想想邊界條件。我的猜想是邊界條件小於或等於 0。假如我們試著重複某個值零次，它會傳回一個空 list。對負數來說亦同，因為它實際上沒什麼意義。
+
+<pre name="code" class="haskell:hs">
+replicate' :: (Num i, Ord i) => i -> a -> [a]
+replicate' n x
+    | n <= 0    = []
+    | otherwise = x:replicate' (n-1) x
+</pre>
+
+這裡我們使用 guard 而不是模式，因為我們正在測試一個布林條件。假使 `n` 小於或等於 0，傳回一個空字串。否則，傳回一個以 `x` 為第一個元素，然後以 `x` 重複 n-1 次作為 tail 的 list。最後，`(n-1)` 這部份將會令我們的 function 到達邊界條件。
+
+<p class="hint">
+<em>註記：</em><code>Num</code> 並非 <code>Ord</code> 的子類別（subclass）。這意味著由數字所構成的某值並非真的必須遵守一個順序。所以這就是為什麼我們在做加減法與大小比較時，必須同時指定 <code>Num</code> 與 <code>Ord</code> 類別約束。
+</p>
+
+接著，我們要實作 `take`。它從一個 list 中取出一定數量的元素。舉例來說，`take 3 [5,4,3,2,1]` 將會傳回 `[5,4,3]`。若是我們試著從一個 list 取出 0 個或更少元素，我們會得到一個空 list。若是我們試著從一個空 list 取出任何東西，我們同樣會得到一個空 list。注意到這裡有兩個邊界條件。所以讓我們把它寫下來：
+
+<pre name="code" class="haskell:hs">
+take' :: (Num i, Ord i) => i -> [a] -> [a]
+take' n _
+    | n <= 0   = []
+take' _ []     = []
+take' n (x:xs) = x : take' (n-1) xs
+</pre>
+
+<img src="img/painter.png" alt="painter" style="float:right" />
+第一個模式指定：若是嘗試取出 0 個或負數個元素，我們會得到一個空 list。注意到我們使用 `_` 來匹配 list，因為我們在這種情況下並不真的關心它是什麼。同樣注意到我們使用了一個 guard，但是沒有 `otherwise` 部分。這代表如果 `n` 實際上大於 0，則會落到下一個模式。第二個模式表示：如果我們試著從一個空 list 取出任何東西，我們會得到一個空 list。第三個模式將 list 分割成 head 與 tail。然後我們陳述：從一個 list 取出 `n` 個元素，等於一個以 `x` 作為 head，然後從 `xs` 中取出 `n-1` 個元素而得的 list 作為 tail 的 list。假如我們試著要從 `[4,3,2,1]` 取出 3 個元素，試著使用一張紙來寫下求值的過程看起來會是怎麼樣的。
+
+`reverse` 簡單地反轉一個 list。想想邊界條件。是什麼呢？來吧....它是個空 list！一個反轉的空 list 等於空 list 本身。好。那麼其餘的部份呢？嗯，你可以說，若是我們將一個 list 切割成 head 與 tail，反轉的 list 就等於反轉的 tail 接著結尾的 head。
+
+<pre name="code" class="haskell:hs">
+reverse' :: [a] -> [a]
+reverse' [] = []
+reverse' (x:xs) = reverse' xs ++ [x]
+</pre>
+
+繼續前進！
+
+因為 Haskell 支援無限 list，我們的遞迴並非真的必須有個邊界條件。不過若是沒有它，它就會無限地持續處理某個值，或是產生一個無限的資料結構，像是一個無限的 list。無限 list 的好處是，我們可以在我們想要的地方切斷它。`repeat` 接收一個元素，並傳回一個僅有這個元素的無限 list。它的遞迴實作非常簡單，看：
+
+<pre name="code" class="haskell:hs">
+repeat' :: a -> [a]
+repeat' x = x:repeat' x
+</pre>
+
+呼叫 `repeat 3` 將會給我們一個從 `3` 開始，然後擁有無限個 `3` 作為 tail 的 list。所以呼叫 `repeat 3` 將會被求值為 `3:repeat 3`，也就是 `3:(3:repeat 3)`，也就是 `3:(3:(3:repeat 3))`，以此類推。
+`repeat 3` 將永遠不會完成求值，而 `take 5 (repeat 3)` 將會給我們一個有五個 3 的 list。所以本質上它就像執行 `replicate 5 3`。
+
+`zip` 接收兩個 list，並將它們扣在一起。`zip [1,2,3] [2,3]` 傳回 `[(1,2),(2,3)]`，因為它會截斷比較長的 list 以配合比較短的 list 長度。如果我們要把某個 list 與一個空的 list 扣在一起會怎麼樣呢？嗯，我們會得到一個空的 list。所以這就是我們的邊界條件。然而，`zip` 接收兩個 list 作為參數，所以實際上有兩個邊界條件。
+
+<pre name="code" class="haskell:hs">
+zip' :: [a] -> [b] -> [(a,b)]
+zip' _ [] = []
+zip' [] _ = []
+zip' (x:xs) (y:ys) = (x,y):zip' xs ys
+</pre>
+
+前兩個模式表示，如果第一個 list 或是第二個 list 為空，我們會得到一個空的 list。第三個模式表示，兩個扣在一起的 list 等於將它們的 head 配成一對，然後接上扣在一起的 tail。將 `[1,2,3]` 與 `['a','b']` 扣在一起最終會試著將 `[3]` 與 `[]` 扣在一起。觸及了邊界條件，所以結果是 `(1,'a'):(2,'b'):[]`，也就等同於 `[(1,'a'),(2,'b')]`。
+
+讓我們再實作一個標準函式庫的 function──`elem`。它接收一個元素與一個 list，並檢查這個元素是否在 list 之中。邊界條件──與 list 的大多數情況相同──為空 list。我們知道一個空 list 不包含元素，所以它當然沒有我們要找的東西。
+
+<pre name="code" class="haskell:hs">
+elem' :: (Eq a) => a -> [a] -> Bool
+elem' a [] = False
+elem' a (x:xs)
+    | a == x    = True
+    | otherwise = a `elem'` xs
+</pre>
+
+如同預期的十分簡單。若是 head 不是這個元素，我們就檢查 tail。假如我們達到一個空 list，則結果為 `False`。
+
 ## <a name="quick-sort">快速，排序！</a>
 
 ## <a name="thinking-recursively">遞迴地思考</a>
