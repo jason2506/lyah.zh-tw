@@ -156,3 +156,12 @@ ghci> quicksort "the quick brown fox jumps over the lazy dog"
 一個就定位且不會再移動的元素被表示為<span style="color:#FF6600;font-weight:bold;">橘色</span>。假使你從左到右閱讀它，你會看到排序過的 list。雖然這裡我們選擇 head 跟所有元素比較大小，不過我們也可以使用任何元素做比較。在快速排序法中，一個你用來比較大小的元素被稱為一個基準點（pivot）。在這裡它是<span style="color:#009900;font-weight:bold">綠色</span>的。我們選擇 head 是因為藉由模式匹配它很容易取得。小於基準點的元素為<span style="color:#0f0;font-weight:bold">亮綠色</span>，而大於基準點的元素為<span style="color:#030;font-weight:bold">深綠色</span>。黃色漸層的東西表示快速排序的一個 application。
 
 ## <a name="thinking-recursively">遞迴地思考</a>
+
+我們到目前為止已經做了不少遞迴了，正如你可能已經注意到的，這裡有個模式：通常你會定義一個邊界案例，然後定義一個 function，其對某些元素做某些事情，再將此 function 套用到其餘的部分。無論它是一個 list、tree 或是任何其他的資料結構。list 的總和為 list 的第一個元素加上 list 其餘部分的總和。list 的乘積是 list 第一個元素與 list 其餘部分乘積的乘積。list 的長度為一加上 list tail 的長度。諸如此類、諸如此類....
+
+<img src="img/brain.png" alt="brain" style="float:left" />
+當然，也要有邊界案例。通常邊界案例為某些遞迴 application 不具意義的情況。處理 list 時，最常見的邊界案例為空 list。若是你在處理 tree，邊界情況通常為不具有任何子代（children）的節點（node）。
+
+你在遞迴地處理數字時也很類似。通常它必須對某個數字做些操作，然後再將 function 應用在這個修改過的數字。我們先前看過階乘 function，而它為一個數字與這個數字減一階乘的乘積。這樣的遞迴 application 對於 0 不具意義，因為僅有正整數的階乘有被定義。邊界案例的值往往為一個單位元素（identity）。乘法的單位元素為 1，因為若是你將某值乘以 1，你會得到同樣的值。同樣在計算 list 總和時，我們定義一個空 list 的總和為 0，而 0 是加法的單位元素。在快速排序法中，邊界案例為空 list，且單位元素也是空 list，因為若是你將一個空 list 加到一個 list 上面，你只會得到原本的 list。
+
+所以在試著想一個遞迴方法來解決一個問題時，嘗試思考遞迴解無法應用的情況，然後看看你是否能以此作為一個邊界案例，想想基本元素再想想你是否要拆開 function 的參數（舉例來說，list 通常透過模式匹配拆成 head 與 tail），以及你要在哪個部分使用遞迴呼叫。
