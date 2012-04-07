@@ -5,6 +5,9 @@
     <base href="{{ site.base_url }}" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <link rel="shortcut icon" href="favicon.png" type="image/png" />
+    <link rel="index" href="/">
+    {% if page.prev %}<link rel="prev" href="{{ page.prev.url }}">{% endif %}
+    {% if page.next %}<link rel="next" href="{{ page.next.url }}">{% endif %}
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     {% for style in page.styles %}
     <link rel="stylesheet" type="text/css" href="{{ style }}" />
