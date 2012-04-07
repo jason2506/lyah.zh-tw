@@ -126,5 +126,33 @@ elem' a (x:xs)
 
 ## <a name="quick-sort">快速，排序！</a>
 
-## <a name="thinking-recursively">遞迴地思考</a>
+我們有一串可以被排序的 list。它們的型別為 `Ord` typeclass 的實體。而且現在，我們打算要排序它們！有個非常酷的排序演算法，被稱為快速排序法（quicksort）。它以非常高明的方式進行排序。在命令式語言中要用超過十行來實作快速排序法，而在 Haskell 中的實作則更加簡短且優雅。快速排序已經變成 Haskell 的一種典型代表。因此，讓我們在這裡實作它，即使在 Haskell 中實作快速排序法是被視為十分俗氣的，因為每個人藉此以展示 Haskell 有多優雅。
 
+<img src="img/quickman.png" alt="quickman" style="float:left" />
+所以，型別簽名將是 `quicksort :: (Ord a) => [a] -> [a]`。沒什麼特別的。邊界條件呢？空 list，正如預期。一個排序過的空 list 是一個空 list。現在這裡看到主要的演算法：*一個排序過的 list 是一個所有小於（或等於）list head 的值在前（且這些值是被排序過的），然後 list 的 head 在中間，再接著所有大於 head 的值（它們也是排序過的）的 list*。注意到我們在此定義中說了兩次<i>排序的</i>，所以我們可能必須進行兩次遞迴呼叫！同樣注意到我們使用動詞<i>是（is）</i>來定義演算法，而不是說<i>做這個、做那個、然後做那個....</i>這就是函數式程式設計之美！我們要如何過濾 list，讓我們只得到小於我們 list head 的元素，與大於我們 list head 的元素呢？list comprehension。所以，讓我們繼續定義這個 function。
+
+<pre name="code" class="haskell:hs">
+quicksort :: (Ord a) => [a] -> [a]
+quicksort [] = []
+quicksort (x:xs) =
+    let smallerSorted = quicksort [a | a <- xs, a <= x]
+        biggerSorted = quicksort [a | a <- xs, a > x]
+    in  smallerSorted ++ [x] ++ biggerSorted
+</pre>
+
+讓我們給它一個小測試執行，看它是否正確地表現。
+
+<pre name="code" class="haskell:ghci">
+ghci> quicksort [10,2,5,3,1,6,7,4,2,3,4,8,9]
+[1,2,2,3,3,4,4,5,6,7,8,9,10]
+ghci> quicksort "the quick brown fox jumps over the lazy dog"
+"        abcdeeefghhijklmnoooopqrrsttuuvwxyz"
+</pre>
+
+這就是我所說的！所以假使我們有 `[5,1,9,4,6,7,3]`，且想要排序它，這個演算法首先會取得 head──`5`，然後把它擺在兩個分別為小於和大於它的 list 中間。所以在此時，你會得到 `[1,4,3] ++ [5] ++ [9,6,7]`。我們知道一旦 list 被完全地排序，數字 `5` 將會留在第四個位置，因為這裡有 3 個數字小於它，且有 3 個數字大於它。現在，若是我們排序 `[1,4,3]` 與 `[9,6,7]`，我們就有了一個排序過的 list！我們使用相同的 function 排序這兩個 list。最終，我們會持續拆解它以達到空 list，而一個空的 list 在某種方面上已經是排序過的了。這裡是個示意圖：
+
+<img src="img/quicksort.png" alt="quicksort" style="margin:10px auto 25px;display:block" />
+
+一個就定位且不會再移動的元素被表示為<span style="color:#FF6600;font-weight:bold;">橘色</span>。假使你從左到右閱讀它，你會看到排序過的 list。雖然這裡我們選擇 head 跟所有元素比較大小，不過我們也可以使用任何元素做比較。在快速排序法中，一個你用來比較大小的元素被稱為一個基準點（pivot）。在這裡它是<span style="color:#009900;font-weight:bold">綠色</span>的。我們選擇 head 是因為藉由模式匹配它很容易取得。小於基準點的元素為<span style="color:#0f0;font-weight:bold">亮綠色</span>，而大於基準點的元素為<span style="color:#030;font-weight:bold">深綠色</span>。黃色漸層的東西表示快速排序的一個 application。
+
+## <a name="thinking-recursively">遞迴地思考</a>
