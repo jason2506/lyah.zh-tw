@@ -4,6 +4,9 @@ title: 遞迴
 prev:
     url: syntax-in-functions
     title: Function 中的語法
+next:
+    url: higher-order-functions
+    title: 高階函數
 ---
 
 ## <a name="hello-recursion">遞迴，你好！</a>
