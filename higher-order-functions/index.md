@@ -96,6 +96,89 @@ GHCI 告訴我們 expression 產生一個型別為 `a -> a` 的 function，但�
 
 ## <a name="higher-orderism">是時候來點高階的了</a>
 
+function 可以接收 function 作為參數，也能回傳 function。為了說明這一點，我們要建立一個接收一個 function，然後將它套用在某值兩次的 function！
+
+<pre name="code" class="haskell:hs">
+applyTwice :: (a -> a) -> a -> a
+applyTwice f x = f (f x)
+</pre>
+
+<img src="http://s3.amazonaws.com/lyah/bonus.png" alt="rocktopus" style="float:right" />
+首先，注意到型別宣告。先前我們並不需要括號，因為 `->` 本來就是右結合的（right-associative）。然而在這裡它是必要的。它表明第一個參數是一個 function，其接收某個值並傳回相同型別的值。第二個參數為此型別的某個值，而傳回值的型別亦相同。我們可以用 curried 的方式來看這個型別宣告，不過為了省下麻煩，我們只說這個 function 接收兩個參數並傳回一個值。第一個參數是一個（型別為 `a -> a` 的）function，而第二個參數型別則是相同的 `a`。這個 function 也可以為 `Int -> Int`、`String -> String` 或其它什麼的。不過這時，第二個參數也必須為相同型別。
+
+<p class="hint">
+<em>註記：</em>從現在開始，我們將會說 function 接收數個參數，儘管每個 function 實際上都只取一個參數並傳回部分應用的 function，直到我們到達一個傳回完整值的 function。所以為了簡單起見，我們會說 <code>a -> a -> a</code> 接收兩個參數，儘管我們知道它實際上到底做了什麼。
+</p>
+
+function 主體十分簡單。我們將參數 `f` 作為一個 function 使用，藉由以空白分隔將 `x` 套用進去，然後再一次將結果套進 `f` 中。總而言之，玩玩看這個 function：
+
+<pre name="code" class="haskell:ghci">
+ghci> applyTwice (+3) 10
+16
+ghci> applyTwice (++ " HAHA") "HEY"
+"HEY HAHA HAHA"
+ghci> applyTwice ("HAHA " ++) "HEY"
+"HAHA HAHA HEY"
+ghci> applyTwice (multThree 2 2) 9
+144
+ghci> applyTwice (3:) [1]
+[3,3,1]
+</pre>
+
+partial application 的迷人與有用是顯而易見的。假如我們的 function 要求我們傳遞一個只接收一個參數的 function，我們可以部分應用一個 function 使它只接收一個參數，然後再傳遞它。
+
+現在我們要使用高階程式設計來實作一個在標準函式庫中非常有用的 function。它叫做 `zipWith`。它接收一個 function 與兩個 list 作為參數，然後藉由將 function 套用在兩個 list 中的個別元素來結合這兩個 list。這裡我們要這樣實作它：
+
+<pre name="code" class="haskell:hs">
+zipWith' :: (a -> b -> c) -> [a] -> [b] -> [c]
+zipWith' _ [] _ = []
+zipWith' _ _ [] = []
+zipWith' f (x:xs) (y:ys) = f x y : zipWith' f xs ys
+</pre>
+
+看看型別宣告。第一個參數為一個接收兩個值並產生第三個值的 function。它們不必為相同型別，但即使相同也行。第二與第三個參數為 list。回傳結果也是個 list。第一個 list 必須為一個 `a` 的 list，因為結合 function 以 `a` 作為它第一個引數。第二個 list 必須為一個 `b` 的 list，因為結合 function 的第二個參數型別為 `b`。回傳結果為 `c` 的 list。如果一個 function 的型別宣告表明它接受一個 `a -> b -> c` function 作為參數，它也會接受一個 `a -> a -> a` function，不過反過來就不行了！記得當你要建立 function──尤其是高階函數──且不確定型別的時候，你可以試著忽略型別宣告，然後藉由使用 `:t` 來檢查 Haskell 將它推導為什麼。
+
+這個 function 的行為與一般的 `zip` 十分相似。邊界條件相同，只是有個額外的引數──結合 function，不過這個引數在邊界條件中無關緊要，所以我們僅用一個 `_` 表示它。而在最後一個模式裡的 function 主體也與 `zip` 相似，只是它不是用 `(x,y)`，而是 `f x y`。若是足夠一般化，一個單獨的高階函數可以被用在許多不同的任務中。這裡是我們的 `zipWith'` function 可以做的所有不同工作的一個小示範：
+
+<pre name="code" class="haskell:ghci">
+ghci> zipWith' (+) [4,2,5,6] [2,6,2,3]
+[6,8,7,9]
+ghci> zipWith' max [6,3,2,1] [7,3,1,5]
+[7,3,2,5]
+ghci> zipWith' (++) ["foo ", "bar ", "baz "] ["fighters", "hoppers", "aldrin"]
+["foo fighters","bar hoppers","baz aldrin"]
+ghci> zipWith' (*) (replicate 5 2) [1..]
+[2,4,6,8,10]
+ghci> zipWith' (zipWith' (*)) [[1,2,3],[3,5,6],[2,3,4]] [[3,2,2],[3,4,5],[5,4,3]]
+[[3,4,6],[9,20,30],[10,12,12]]
+</pre>
+
+如你所見，一個單獨的高階函數能夠以十分多樣的方式使用。命令式程式設計通常使用像是 for 迴圈、while 迴圈、設定變數值、檢測狀態之類的東西來達成某些行為，然後將它包裝成一個介面，像是一個 function。函數式程式設計使用高階函數來抽離常見的模式，像是成對檢查兩個 list 再對這些 pair 做某些事、取得一組解、或是剔除你不需要的值。
+
+我們將實作另一個已經在標準函式庫中的 function，叫做 `flip`。`flip` 僅接收一個 function 並傳回一個像是我們原始的 function，只是前兩個參數被翻轉（flip）了。我們可以像這樣實作它：
+
+<pre name="code" class="haskell:hs">
+flip' :: (a -> b -> c) -> (b -> a -> c)
+flip' f = g
+    where g x y = f y x
+</pre>
+
+看到型別宣告，我們表明其接收一個接收一個 `a` 與一個 `b` 的 function，並回傳一個接收一個 `b` 與一個 `a` 的 function。不過因為 function 預設為 curried 的，所以實際上不需要第二組括號，因為 `->` 預設為右結合。`(a -> b -> c) -> (b -> a -> c)` 與 `(a -> b -> c) -> (b -> (a -> c))` 相同，其與 `(a -> b -> c) -> b -> a -> c` 相同。我們寫了 `g x y = f y x`。若是如此，則 `f y x = g x y` 一定也行，對吧？謹記於心，我們可以用一個更簡單的方式定義這個 function。
+
+<pre name="code" class="haskell:hs">
+flip' :: (a -> b -> c) -> b -> a -> c
+flip' f y x = f x y
+</pre>
+
+這裡，我們藉著 curried function 的優勢。當我們缺少了 `y` 與 `x` 來呼叫 `flip' f`，它會回傳一個接收這兩個參數，但將其翻轉呼叫的 `f`。即使翻轉的 function 通常被傳遞到其它的 function 裡，我們也可以藉著 curried function 的優勢，藉由預先想好並寫下它被完整呼叫的最終結果來建立高階函數。
+
+<pre name="code" class="haskell:ghci">
+ghci> flip' zip [1,2,3,4,5] "hello"
+[('h',1),('e',2),('l',3),('l',4),('o',5)]
+ghci> zipWith (flip' div) [2,2..] [10,8,6,4,2]
+[5,4,3,2,1]
+</pre>
+
 ## <a name="maps-and-filters">Map 與 Filter</a>
 
 ## <a name="lambdas">Lambdas</a>
