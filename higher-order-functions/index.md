@@ -181,6 +181,147 @@ ghci> zipWith (flip' div) [2,2..] [10,8,6,4,2]
 
 ## <a name="maps-and-filters">Map 與 Filter</a>
 
+<code class="label function">map</code> 接收一個 function 與一個 list，並將這個 function 套用在 list 中的所有元素以產生一個新的 list。讓我們看看它的型別簽名是什麼，以及它是如何被定義的。
+
+<pre name="code" class="haskell:hs">
+map :: (a -> b) -> [a] -> [b]
+map _ [] = []
+map f (x:xs) = f x : map f xs
+</pre>
+
+型別簽名表示它接收一個接收一個 `a` 並回傳一個 `b` 的 function、一個 `a` 的 list，並傳回一個 `b` 的 list。有時候光看 function 的型別簽名，你就能說出它是什麼，挺有趣的。`map` 是能夠被用在數以百萬計不同方法的多用途高階函數之一。以下是它的執行結果：
+
+<pre name="code" class="haskell:ghci">
+ghci> map (+3) [1,5,3,1,6]
+[4,8,6,4,9]
+ghci> map (++ "!") ["BIFF", "BANG", "POW"]
+["BIFF!","BANG!","POW!"]
+ghci> map (replicate 3) [3..6]
+[[3,3,3],[4,4,4],[5,5,5],[6,6,6]]
+ghci> map (map (^2)) [[1,2],[3,4,5,6],[7,8]]
+[[1,4],[9,16,25,36],[49,64]]
+ghci> map fst [(1,2),(3,5),(6,3),(2,6),(2,5)]
+[1,3,6,2,2]
+</pre>
+
+你或許有注意到其中的每一項都能夠以一個 list comprehension 達成。`map (+3) [1,5,3,1,6]` 等同於寫下 `[x+3 | x <- [1,5,3,1,6]]`。然而，在你只應用某 function 在一個 list 的元素時，使用 `map` 更加易讀，尤其在你處理映射（map）的映射的時候，這時有一大堆括號會變得有些凌亂。
+
+<code class="label function">filter</code> 為一個接收一個述部（一個述部是一個告訴你某值為真或假的 function，所以在我們的情況中，即是一個傳回布林值的 function）與一個 list，然後回傳滿足述部的元素 list。其型別簽名與實作像這樣：
+
+<pre name="code" class="haskell:hs">
+filter :: (a -> Bool) -> [a] -> [a]
+filter _ [] = []
+filter p (x:xs)
+    | p x       = x : filter p xs
+    | otherwise = filter p xs
+</pre>
+
+非常簡單的東西。如果 `p x` 被求值為 `True`，此元素就會被包含在新的 list 中。若否，就將它排除在外。幾個有用的範例：
+
+<pre name="code" class="haskell:ghci">
+ghci> filter (>3) [1,5,3,2,1,6,4,3,2,1]
+[5,6,4]
+ghci> filter (==3) [1,2,3,4,5]
+[3]
+ghci> filter even [1..10]
+[2,4,6,8,10]
+ghci> let notNull x = not (null x) in filter notNull [[1,2,3],[],[3,4,5],[2,2],[],[],[]]
+[[1,2,3],[3,4,5],[2,2]]
+ghci> filter (`elem` ['a'..'z']) "u LaUgH aT mE BeCaUsE I aM diFfeRent"
+"uagameasadifeent"
+ghci> filter (`elem` ['A'..'Z']) "i lauGh At You BecAuse u r aLL the Same"
+"GAYBALLS"
+</pre>
+
+這所有的一切也能夠以使用述部的 list comprehension 達成。沒有一個何時使用 `map` 與 `filter` 或是使用 list comprehension 的既定規則，你必須根據程式碼與上下文判斷哪個更加易讀。應用多個述部的 `filter` 等同於在一個 list comprehension 中多次過濾某值，或是以邏輯 `&&` function 結合多個述部。
+
+記得我們在[前一章](/recursion)中的快速排序法 function 嗎？我們使用 list comprehension 來過濾小於（或等於）與大於基準點的 list 元素。我們可以藉由使用 `filter`，以一個更加易讀的方式達成相同的功能：
+
+<pre name="code" class="haskell:hs">
+quicksort :: (Ord a) => [a] -> [a]
+quicksort [] = []
+quicksort (x:xs) =
+    let smallerSorted = quicksort (filter (<=x) xs)
+        biggerSorted = quicksort (filter (>x) xs)
+    in  smallerSorted ++ [x] ++ biggerSorted
+</pre>
+
+<img src="img/map.png" alt="map" style="float:left" />
+映射與過濾是每個函數程式設計師工具箱裡的謀生工具（bread and butter）。噢，無論你是使用 `map` 與 `filter` function 或是 list comprehension 來做都沒關係。回想我們如何解決找出特定周長的直角三角形的問題。在命令式語言，我們藉由嵌套三層迴圈，然後測試當前的組合是否為一個直角三角形，且有正確的周長來解決。若是如此，我們會將它印到螢幕上或是其它地方。在函數式程式設計中，這種模式以映射與過濾達成。你建立一個接收一個值並產出某個結果的 function。我們映射這個 function 到一組值之上，然後我們過濾生成的 list 以得到滿足我們搜尋的結果。感謝 Haskell 的惰性，即使你多次映射到一個 list 上，並多次過濾它，它也只會傳遞這個 list 一次。
+
+讓我們*找出可以被 3829 除盡且小於 100,000 的最大數字*。為了做到這件事，我們要過濾一組我們知道答案所在的可能值。
+
+<pre name="code" class="haskell:hs">
+largestDivisible :: (Integral a) => a
+largestDivisible = head (filter p [100000,99999..])
+    where p x = x `mod` 3829 == 0
+</pre>
+
+我們首先建立一個所有小於 100,000 的數字 list，以降序排列。然後我們藉由我們的述部來過濾它，且因為數字以降序排列，滿足我們述部的最大數字即是過濾過 list 的第一個元素。我們甚至不需要使用一個無限的 list 作為我們的起始集合。又一個懶惰的表現。因為我們最終只會使用過濾過 list 的 head，所以過濾過的 list 是有限或是無限並無關緊要。求值會在第一個適當的答案被找到時停止。
+
+接下來，我們要*找出所有小於 10,000 的奇數平方的和*<span class="note">〔譯註：是「小於 10,000 且為奇數的平方數」的和，不是「小於 10,000 的奇數的平方數」的和〕</span>。不過首先，我們要引入 <code class="label function">takeWhile</code> function，因為我們會在我們的解法中用到它。它接收一個述部與一個 list，然後從 list 的開頭開始，並在述部成立時傳回它的元素。一旦找到一個令述部不成立的元素，它就停止了。若是我們要取出字串 `"elephants know how to party"` 中的第一個字，我們可以執行 `takeWhile (/=' ') "elephants know how to party"`，而它會傳回 `"elephants"`。好，所有小於 10,000 的奇數平方的和。首先，我們要從映射 `(^2)` function 到無限 list `[1..]` 開始。然後我們過濾它，以讓我們只得到奇數值。這時，我們要在這個 list 的元素小於 10,000 時從中取出元素。最後，我們要取得這個 list 的總和。我們甚至不必為此定義一個 function，我們可以在 GHCI 中以一行達成：
+
+<pre name="code" class="haskell:ghci">
+ghci> sum (takeWhile (<10000) (filter odd (map (^2) [1..])))
+166650
+</pre>
+
+真棒！我們從某個初始資料開始（所有自然數的無限 list），然後我們映射到它之上、過濾它並切割它直到它滿足我們的需求，然後我們將它加總起來。我們也可以使用 list comprehension 來寫：
+
+<pre name="code" class="haskell:ghci">
+ghci> sum (takeWhile (<10000) [n^2 | n <- [1..], odd (n^2)])
+166650
+</pre>
+
+你覺得哪種比較漂亮完全是品味的問題。再一次，Haskell 的惰性令其變為可能。我們可以映射與過濾一個無限的 list，因為它不會真的立刻映射與過濾它，它會延遲這些行為。只有在我們強迫 Haskell 告訴我們總和，`sum` function 才會告訴 `takeWhile` 它需要這些數字。`takeWhile` 強制讓過濾與映射發生，但只到遇到一個大於或是等於 10,000 的數字為止。
+
+對於我們的下個問題，我們要處理 Collatz 序列。我們取一個正整數。如果這個數字是偶數，我們將它除以二。如果它是奇數，我們將它乘以 3 再加上 1。我們取結果的數字，再對它做一樣的事，這會產生一個新的數字，以此類推。本質上，我們會取得一個數字鏈（chain）。對於所有起始數字，鏈都會以數字 1 結束。所以若是我們取了起始數字 13，我們會得到這個序列：<i>13, 40, 20, 10, 5, 16, 8, 4, 2, 1</i>。13*3 + 1 等於 40。40 除以 2 為 20，等等。我們看到這條鏈有十個項。
+
+現在我們想要知道的是這個：*對於所有介於 1 到 100 的起始數字，有多少條鏈的長度大於 15？*首先，我們要寫一個產生一條鏈的 function：
+
+<pre name="code" class="haskell:hs">
+chain :: (Integral a) => a -> [a]
+chain 1 = [1]
+chain n
+    | even n =  n:chain (n `div` 2)
+    | odd n  =  n:chain (n*3 + 1)
+</pre>
+
+因為鏈以 1 結尾，所以它就是邊界案例。這是個十分基本的遞迴 function。
+
+<pre name="code" class="haskell:ghci">
+ghci> chain 10
+[10,5,16,8,4,2,1]
+ghci> chain 1
+[1]
+ghci> chain 30
+[30,15,46,23,70,35,106,53,160,80,40,20,10,5,16,8,4,2,1]
+</pre>
+
+呀！它看起來運作正確。現在，這個 function 會告訴我們問題的答案：
+
+<pre name="code" class="haskell:hs">
+numLongChains :: Int
+numLongChains = length (filter isLong (map chain [1..100]))
+    where isLong xs = length xs > 15
+</pre>
+
+我們將 `chain` function 映射到 `[1..100]` 以得到鏈的 list，鏈本身就以 list 表示。然後，我們藉由一個僅檢查 list 長度是否大於 15 的述部來過濾它。一旦我們完成過濾，我們就能看到有多少鏈被留在結果的 list 中。
+
+<p class="hint">
+<em>註記：</em>這個 function 的型別為 <code>numLongChains :: Int</code>，因為歷史因素，<code>length</code> 會回傳一個 <code>Int</code> 而不是一個 <code>Num a</code>。如果我們想要回傳一個更一般化的 <code>Num a</code>，我們可以將 <code>fromIntegral</code> 使用在產生出來的長度上。
+</p>
+
+藉由 `map`，我們也可以做像是 `map (*) [0..]` 這種事，如果不是為了任何說明 curry 是如何運作，以及（部分應用的）function 是如何實際求值──為此你可以將它傳遞到其它 function 或是放進 list 裡（你無法將它們轉成字串）──的理由。到目前為止，我們只將接收一個參數的 function 映射到 list 上，像是 `map (*2) [0..]` 來得到一個型別為 `(Num a) => [a]` 的 list，不過我們也可以毫無問題的執行 `map (*) [0..]`。這裡所發生的是，在 list 中的數字被套用到 function `*`──其型別為 `(Num a) => a -> a -> a`。只套用一個參數到一個接收兩個參數的 function 會回傳一個接收一個參數的 function。若是我們將 `*` 映射到 list `[0..]` 之上，我們會得到一個僅接收一個參數的 function list，所以是 `(Num a) => [a -> a]`。`map (*) [0..]` 會產生一個像是我們藉由寫下 `[(0*),(1*),(2*),(3*),(4*),(5*)..` 而得到的 list。
+
+<pre name="code" class="haskell:ghci">
+ghci> let listOfFuns = map (*) [0..]
+ghci> (listOfFuns !! 4) 5
+20
+</pre>
+
+從我們的 list 取得索引 `4` 的元素會回傳一個等同於 `(4*)` 的 function。這時，我們套用 `5` 到這個 function。所以這就像是寫下 `(4*) 5` 或是 `4 * 5`。
+
 ## <a name="lambdas">Lambdas</a>
 
 ## <a name="folds">Only folds and horses</a>
