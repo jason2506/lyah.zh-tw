@@ -312,7 +312,7 @@ numLongChains = length (filter isLong (map chain [1..100]))
 <em>註記：</em>這個 function 的型別為 <code>numLongChains :: Int</code>，因為歷史因素，<code>length</code> 會回傳一個 <code>Int</code> 而不是一個 <code>Num a</code>。如果我們想要回傳一個更一般化的 <code>Num a</code>，我們可以將 <code>fromIntegral</code> 使用在產生出來的長度上。
 </p>
 
-藉由 `map`，我們也可以做像是 `map (*) [0..]` 這種事，如果不是為了任何說明 curry 是如何運作，以及（部分應用的）function 是如何實際求值──為此你可以將它傳遞到其它 function 或是放進 list 裡（你無法將它們轉成字串）──的理由。到目前為止，我們只將接收一個參數的 function 映射到 list 上，像是 `map (*2) [0..]` 來得到一個型別為 `(Num a) => [a]` 的 list，不過我們也可以毫無問題的執行 `map (*) [0..]`。這裡所發生的是，在 list 中的數字被套用到 function `*`──其型別為 `(Num a) => a -> a -> a`。只套用一個參數到一個接收兩個參數的 function 會回傳一個接收一個參數的 function。若是我們將 `*` 映射到 list `[0..]` 之上，我們會得到一個僅接收一個參數的 function list，所以是 `(Num a) => [a -> a]`。`map (*) [0..]` 會產生一個像是我們藉由寫下 `[(0*),(1*),(2*),(3*),(4*),(5*)..` 而得到的 list。
+藉由 `map`，我們也可以做像是 `map (*) [0..]` 這種事，如果不是為了任何說明 currying 是如何運作，以及（部分應用的）function 是如何實際求值──為此你可以將它傳遞到其它 function 或是放進 list 裡（你無法將它們轉成字串）──的理由。到目前為止，我們只將接收一個參數的 function 映射到 list 上，像是 `map (*2) [0..]` 來得到一個型別為 `(Num a) => [a]` 的 list，不過我們也可以毫無問題的執行 `map (*) [0..]`。這裡所發生的是，在 list 中的數字被套用到 function `*`──其型別為 `(Num a) => a -> a -> a`。只套用一個參數到一個接收兩個參數的 function 會回傳一個接收一個參數的 function。若是我們將 `*` 映射到 list `[0..]` 之上，我們會得到一個僅接收一個參數的 function list，所以是 `(Num a) => [a -> a]`。`map (*) [0..]` 會產生一個像是我們藉由寫下 `[(0*),(1*),(2*),(3*),(4*),(5*)..` 而得到的 list。
 
 <pre name="code" class="haskell:ghci">
 ghci> let listOfFuns = map (*) [0..]
@@ -323,6 +323,59 @@ ghci> (listOfFuns !! 4) 5
 從我們的 list 取得索引 `4` 的元素會回傳一個等同於 `(4*)` 的 function。這時，我們套用 `5` 到這個 function。所以這就像是寫下 `(4*) 5` 或是 `4 * 5`。
 
 ## <a name="lambdas">Lambdas</a>
+
+<img src="img/lambda.png" alt="lambda" style="float:right" />
+lambda 基本上是個匿名（anonymous）函數，使用它是因為某些 function 我們只需要使用一次。通常，我們建立一個 lambda 都伴隨著要將它傳遞到一個高階函數中的唯一目的。要建立一個 lambda，我們寫作一個 `\`（因為如果你瞇著眼睛看，它看起來就像個希臘字母的 lambda），然後寫下以空白分隔的參數。接著是一個 `->` 接著 function 主體。我們通常將它以括號包起來，否則它會一路向右擴展下去。
+
+如果你向上看大概五英呎左右，你會看到我們在我們的 `numLongChains` function 裡頭使用了一個 <i>where</i> 綁定來建立 `isLong` function，其唯一目的就是要傳遞到 `filter` 之中。嗯，為了代替這種作法，我們可以使用一個 lambda：
+
+<pre name="code" class="haskell:hs">
+numLongChains :: Int
+numLongChains = length (filter (\xs -> length xs > 15) (map chain [1..100]))
+</pre>
+
+lambda 是 expression，這就是為什麼我們可以像這樣傳遞它。expression `(\xs -> length xs > 15)` 回傳一個告訴我們傳遞進去的 list 長度是否大於 15 的 function。
+
+<img src="img/lamb.png" alt="lamb" style="float:left" />
+不熟悉 currying 與 partial application 如何運作的人，時常會在不必要的時候使用 lambda。舉例來說，由於 `(+3)` 與 `(\x -> x + 3)` 都是接收一個數字並加上 3 的 function，所以 expression `map (+3) [1,6,3,2]` 與 `map (\x -> x + 3) [1,6,3,2]` 是等價的。不消說，由於使用 partial application 更加易讀，在這種情況中建立一個 lambda 是很愚蠢的。
+
+如同一般的 function，lambda 可以接收任何數量的參數：
+
+<pre name="code" class="haskell:ghci">
+ghci> zipWith (\a b -> (a * 30 + 3) / b) [5,4,3,2,1] [1,2,3,4,5]
+[153.0,61.5,31.0,15.75,6.6]
+</pre>
+
+且如同一般的 function，你可以在 lambda 中進行模式匹配。唯一的不同是，你無法為一個參數定義多個模式，像是為相同的參數建立一個 `[]` 與一個 `(x:xs)` 模式。若是在 lambda 中模式匹配失敗，就會發生一個執行期錯誤，所以在 lambda 裡使用模式匹配時要小心點。
+
+<pre name="code" class="haskell:ghci">
+ghci> map (\(a,b) -> a + b) [(1,2),(3,5),(6,3),(2,6),(2,5)]
+[3,8,9,8,7]
+</pre>
+
+lambda 通常以括號包起來，除非我們要讓它一路向右擴展下去。這裡有些有趣的事情：由於 function 預設是 curried，所以這兩者是等價的：
+
+<pre name="code" class="haskell:hs">
+addThree :: (Num a) => a -> a -> a -> a
+addThree x y z = x + y + z
+</pre>
+
+<pre name="code" class="haskell:hs">
+addThree :: (Num a) => a -> a -> a -> a
+addThree = \x -> \y -> \z -> x + y + z
+</pre>
+
+若是我們像這樣定義一個 function，型別宣告為何如此就很顯而易見了。型別宣告與方程式（equation）兩者都有三個 `->`。但當然，第一種撰寫 function 的方式更加易讀，第二種方式則幾乎是個說明 currying 的噱頭。
+
+然而，有些時候使用這個符號是很酷的。我想像這樣定義 `flip` function 的時候是最好讀的：
+
+<pre name="code" class="haskell:ghci">
+flip' :: (a -> b -> c) -> b -> a -> c
+flip' f = \x y -> f y x
+</pre>
+
+即使這與撰寫 `flip' f x y = f y x` 相同，但大多時候，我們能明顯看到它會被用來產生一個新的 function。`flip` 最常見的使用情況是僅以 function 參數呼叫它，然後將生成的 function 傳遞到一個 `map` 或是一個 `filter`。所以當你想要明確表示你的 function 主要會被部分應用並作為參數傳遞到一個 function 裡，就以這種方式使用 lambda
+。
 
 ## <a name="folds">Only folds and horses</a>
 
