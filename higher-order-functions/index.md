@@ -502,4 +502,25 @@ ghci> sum (map sqrt [1..130])
 
 ## <a name="function-application">帶著 $ 的 function application</a>
 
+好吧，繼續，我們來看看 `$` function，它也被稱作 <i>function application</i>。首先，讓我們看看它是如何被定義的：
+
+<pre name="code" class="haskell:hs">
+($) :: (a -> b) -> a -> b
+f $ x = f x
+</pre>
+
+<img src="img/dollar.png" alt="dollar" style="float:left" />
+什麼東西？這什麼沒用的運算子？這只是個 function application！嗯，差不多，但不完全是！一般的 function application（把空白擺在兩個值中間）有個非常高的優先次序，而 `$` function 有最低的優先次序。使用空白的 function application 為左結合（所以 `f a b c` 與 `((f a) b) c)` 相同），帶著 `$` function application 則是右結合。
+
+一切都很好，不過這對我們有什麼幫助呢？大多數時候，這是個讓我們不必寫許多括號的方便 function。考慮到 `sum (map sqrt [1..130])` 這個 expression。因為 `$` 有如此低的優先次序，我們可以將這個 expression 改寫成 `sum $ map sqrt [1..130]`，讓我們少打了不少字！在遇到一個 `$` 的時候，在其右邊的 expression 會被作為參數套用到它左邊的 function。`sqrt 3 + 4 + 9` 怎麼樣？它會將 9、4 與 3 的平方根加在一起。如果你想要取得 <i>3 + 4 + 9</i> 的平方根，我們必須寫成 `sqrt (3 + 4 + 9)`，或是使用 `$`：因為 `$` 具有任何運算子中最低的優先次序，所以我們可以寫成 `sqrt $ 3 + 4 + 9`。這就是為什麼你可以將 `$` 想像成近似於寫下一個左括號，然後在 expression 的最右邊寫下右括號的等價形式。
+
+`sum (filter (> 10) (map (*2) [2..10]))` 怎麼樣？嗯，因為 `$` 是右結合的，所以 `f (g (z x))` 等同於 `f $ g $ z x`。也因此，我們可以將 `sum (filter (> 10) (map (*2) [2..10]))` 改寫成 `sum $ filter (> 10) $ map (*2) [2..10]`。
+
+不過除了擺脫括號，`$` 意味著 function application 可以被視為另一個 function。舉例來說，透過這種方式，我們可以將 function application 映射到一組 function list。
+
+<pre name="code" class="haskell:ghci">
+ghci> map ($ 3) [(4+), (10*), (^2), sqrt]
+[7.0,30.0,9.0,1.7320508075688772]
+</pre>
+
 ## <a name="composition">Function composition</a>
