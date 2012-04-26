@@ -379,6 +379,127 @@ flip' f = \x y -> f y x
 
 ## <a name="folds">Only folds and horses</a>
 
+<img src="img/origami.png" alt="folded bird" style="float:right" />
+回到我們處理遞迴的時候，我們注意到到處都有許多操作在 list 之上的遞迴 function。通常，我們有一個針對空 list 的邊界案例。我們引入 `x:xs` 模式然後做某些涉及單獨的元素與 list 剩下部份的動作。事實證明這是個非常常見的模式，因此有一對非常有用的 function 被引入來封裝它。這些 function 被稱為折疊（fold）。它有點像是 `map` function，只是它將 list 化簡為某個單一值。
+
+一個折疊（fold）接收一個二元 function、一個起始值（我喜歡把它叫做累加器〈accumulator〉）與一個要被折疊的 list。二元 function 本身接收兩個參數。二元 function 會以累加器與第一個（或是最後一個）元素呼叫，並產生一個新的累加器。然後，二元 function 會再一次以新的累加器與當前新的第一個（或最後一個）元素被呼叫，以此類推。一旦我們走遍整個 list，只有累加器留下來，而它就是我們化簡 list 得到的結果。
+
+首先讓我們看看 <code class="label function">foldl</code> function，也被稱為左折疊。它從左邊開始折疊 list。二元 function 被套用在起始值與 list head。這會產生一個新的累加值，而二元 function 會以這個值與下一個元素再次被呼叫，以此類推。
+
+讓我們再一次實作 `sum`，但這時我們要使用一個折疊，而不是顯式的遞迴。
+
+<pre name="code" class="haskell:hs">
+sum' :: (Num a) => [a] -> a
+sum' xs = foldl (\acc x -> acc + x) 0 xs
+</pre>
+
+測試看看，一二三：
+
+<pre name="code" class="haskell:ghci">
+ghci> sum' [3,5,2,1]
+11
+</pre>
+
+<img src="img/foldl.png" alt="foldl" style="float:left" />
+讓我們深入看看這個折疊是怎麼發生的。`\acc x -> acc + x` 為一個二元 function。`0` 為起始值，而 `xs` 是要被折疊的 list。首先，`0` 被用來當做二元 function 的 `acc` 參數，而 `3` 則被用來當做 `x`（或是當前的元素）參數。`0 + 3` 產生一個 `3`，而它會變成新的累加值。接下來，`3` 被用來當做累加值，而 `5` 作為當前元素，且 `8` 成為了新的累加值。繼續向前，`8` 為累加值、`2` 為當前元素、新的累加值為 `10`。最後，`10` 被用作累加值，而 `1` 作為當前元素，產生 `11`。恭喜，你已經完成折疊了！
+
+左邊的這個專業圖表，一步接著一步（一天接著一天！）說明了折疊是怎麼發生的。綠褐色的數字為累加值。你可以看到 list 如何藉由累加器，從左邊漸漸被消耗。唔！如果我們考慮到 function 會被 curried，我們可以將它實作的更加簡潔，像這樣：
+
+<pre name="code" class="haskell:hs">
+sum' :: (Num a) => [a] -> a
+sum' = foldl (+) 0
+</pre>
+
+`(\acc x -> acc + x)` 這個 lambda function 與 `(+)` 相同。我們可以忽略作為參數的 `xs`，因為呼叫 `foldl (+) 0` 會回傳一個接收一個 list 的 function。通常，由於有 currying，所以如果你有一個像是 `foo a = bar b a` 的 function，你可以將它改寫成 `foo = bar b`。
+
+總之，在進入到右折疊之前，讓我們以左折疊實作另一個 function。我相信大家都知道 `elem` 會檢查一個值是否為一個 list 的一部分，所以我不會再提一次（唉呦，剛剛就提了！）。讓我們以左折疊實作它。
+
+<pre name="code" class="haskell:hs">
+elem' :: (Eq a) => a -> [a] -> Bool
+elem' y ys = foldl (\acc x -> if x == y then True else acc) False ys
+</pre>
+
+嗯，嗯，嗯，這裡我們有些什麼呢？這裡起始值與累加器為一個布林值。在處理折疊的時候，累加值與最終結果的型別總是相同的。如果你始終不知道該拿什麼來當做起始值，這會給你一些想法。我們從 `False` 開始。使用 `False` 作為起始值是有意義的。我們假設給定的值不存在 list 中。同樣的，如果我們對一個空 list 進行折疊，則結果將會是起始值。然後我們檢查當前的元素是否是我們要尋找的元素。如果是，我們就將累加器設為 `True`。若否，我們就讓累加器維持不變。若是累加器先前為 `False`，它會維持如此，因為當前的元素也不是我們要找的。若它先前為 `True`，我們也因此保留它。
+
+右折疊──<code class="label function">foldr</code> 以類似於左折疊的方式運作，只是累加器從右邊開始取值。同樣的，左折疊的二元 function 有個累計器作為第一個參數，與當前值作為第二個參數（所以是 `\acc x -> ...`），右折疊的二元 function 有個當前值作為第一個參數，與累計器作為第二個參數（所以是 `\x acc -> ...`）。右折疊有個在右邊的累加器這點也有點道理，因為是從右邊折疊的嘛。
+
+折疊的累加值（以及結果）可以是任何型別。它可以是個數字、一個布林值、甚或是一個 list。我們要以右折疊實作 `map` function。累加器將會是個 list，我們將會一個元素接著一個元素累積被映射的 list。根據如此，起始值是個空 list 這點是很顯而易見的。
+
+<pre name="code" class="haskell:hs">
+map' :: (a -> b) -> [a] -> [b]
+map' f xs = foldr (\x acc -> f x : acc) [] xs
+</pre>
+
+若是我們要將 `(+3)` 映射到 `[1,2,3]`，要從右邊開始處理 list。我們取得最後一個元素──其為 `3`，並將 function 套用上去，其結果為 `6`。然後，我們將它前置（`:`）在累加器──其為 `[]`──之前。`6:[]` 即是 `[6]`，而這就是現在的累加器。我們將 `(+3)` 套用在 `2`，其為 `5`，且我們將它前置在累加器，所以累計器現在是 `[5,6]`。我們將 `(+3)` 套用到 `1`，並將它前置在累加器，所以最終值為 `[4,5,6]`。
+
+當然，我們也能夠以左折疊來實作這個 function。這將會是 `map' f xs = foldl (\acc x -> acc ++ [f x]) [] xs`，不過 `++` function 比起 `:` 代價更為高昂，所以我們在從一個 list 建立新 list 的時候，通常會使用右折疊。
+
+<img src="img/washmachine.png" alt="fold this up!" style="float:right" />
+如果你要反轉一個 list，你能夠以像是左折疊的方式對它進行右折疊，反之亦然。有時你甚至不必這麼做。`sum` function 能夠以十分相似的方式以左折疊與右折疊實作。一個主要的不同是，右折疊能夠運作於無限的 list，而左折疊則不行！如果你在某個點取一個無限的 list，並從右邊開始折疊它，你最終將會到達 list 的開頭。然而，如果你在某個點取一個無限的 list，然後嘗試從左邊開始折疊它，你將永不會到達結尾！
+
+*折疊可以被用來實作任何讓你一個元素接個一個元素巡訪 list 一次，然後基於如此傳回某值的 function。無論何時你想巡訪一個 list 以傳回某值，你可能就需要一個折疊。*這就是為什麼折疊是函數式語言中為最有用的 function 型別之一，與映射與過濾齊名。
+
+<code class="label function">foldl1</code> 與 <code class="label function">foldr1</code> function 運作得非常像是 `foldl` 與 `foldr`，只是你不需要提供它們一個明確的起始值。它假設 list 的第一個（或最後一個）元素為起始值，然後從它的下一個元素開始折疊。考慮到這一點，`sum` function 可以像這樣被實作：`sum = foldl1 (+)`。因為它是以要折疊的 list 有至少一個元素為前提，所以若是以空 list 呼叫它，就會產生執行期錯誤。在另一方面，`foldl` 與 `foldr` 與空 list 運作良好。在建立一個折疊的時候，想想它要怎麼操作空 list。如果 function 在給定空 list 時沒什麼意義，你可能可以用 `foldl1` 或是 `foldr1` 來實作它。
+
+為了顯示折疊的威力，我們要使用折疊來實作一堆標準函式庫 function：
+
+<pre name="code" class="haskell:hs">
+maximum' :: (Ord a) => [a] -> a
+maximum' = foldr1 (\x acc -> if x > acc then x else acc)
+
+reverse' :: [a] -> [a]
+reverse' = foldl (\acc x -> x : acc) []
+
+product' :: (Num a) => [a] -> a
+product' = foldr1 (*)
+
+filter' :: (a -> Bool) -> [a] -> [a]
+filter' p = foldr (\x acc -> if p x then x : acc else acc) []
+
+head' :: [a] -> a
+head' = foldr1 (\x _ -> x)
+
+last' :: [a] -> a
+last' = foldl1 (\_ x -> x)
+</pre>
+
+`head` 以模式匹配實作得更好，不過這只是要顯示，你仍然可以使用折疊來達成。我想我們的 `reverse'` 定義十分高明。我們取一個空 list 作為起始值，然後從左邊開始處理 list，並將它前置在我們的累加器。最後，我們就建出了一個反轉的 list。`\acc x -> x : acc` 看起來有點像是 `:` function，只是參數是顛倒過來的。這就是為什麼我們也可以將我們的 reverse 寫成 `foldl (flip (:)) []`。
+
+另一種描述左與右折疊的方式像是：假定我們有個右折疊，二元 function 為 `f`，而起始值為 `z`。若是我們對 list `[3,4,5,6]` 進行右折疊，我們實際上是這樣做：`f 3 (f 4 (f 5 (f 6 z)))`。`f` 以 list 中的最後一個元素與累加器呼叫，這個值就被視為下一個累加器，以此類推。若是我們以 `+` 作為 `f` 且起始累加值為 `0`，就是 `3 + (4 + (5 + (6 + 0)))`。或是我們將 `+` 寫成前綴 function，就是 `(+) 3 ((+) 4 ((+) 5 ((+) 6 0)))`。類似的，對這個 list 以 `g` 作為二元 function，以 `z`作為累加器進行左折疊，等同於 `g (g (g (g z 3) 4) 5) 6`。若是我們使用 `flip (:)` 作為二元 function，與 `[]` 作為累加器（所以我們會反轉這個 list），這時它就等同於 `flip (:) (flip (:) (flip (:) (flip (:) [] 3) 4) 5) 6`。果然，如果你對此 expression 求值，你就得到了 `[6,5,4,3]`。
+
+<code class="label function">scanl</code> 與 <code class="label function">scanr</code> 就像是 `foldl` 與 `foldr`，只是它會以 list 的形式記錄所有中介的累加器狀態。這裡也有個 `scanl1` 與 `scanr1`，其和 `foldl1` 與 `foldr1` 相似。
+
+<pre name="code" class="haskell:ghci">
+ghci> scanl (+) 0 [3,5,2,1]
+[0,3,8,10,11]
+ghci> scanr (+) 0 [3,5,2,1]
+[11,8,3,1,0]
+ghci> scanl1 (\acc x -> if x > acc then x else acc) [3,4,5,3,7,9,2,1]
+[3,4,5,5,7,9,9,9]
+ghci> scanl (flip (:)) [] [3,2,1]
+[[],[3],[2,3],[1,2,3]]
+</pre>
+
+在使用 `scanl` 時，最終結果將會是其生成 list 的最後一個元素，而 `scanr` 則會把結果擺在 head。
+
+掃描（scan）用以監視能夠以 fold 實作的 function 執行過程。讓我們回答這個問題：*取多少個自然數平方根的總和會大於 1000？*要得到所有自然數的平方根，我們僅需要 `map sqrt [1..]`。現在，要取得總和，我們可以做一次折疊，但因為我們對總和的過程感興趣，所以我們要進行一次掃描。一旦我們完成掃描，我們就看到有多少個總和小於 1000 了。通常，在掃描清單的第一個總和為 1。第二個總和將會是 1 加上 2 的平方根。第三個總和將會是它加上 3 的平方根。若是有 X 個小於 1000 的總和，這時它會取第 X+1 個總和超過 1000 的元素。
+
+<pre name="code" class="haskell:hs">
+sqrtSums :: Int
+sqrtSums = length (takeWhile (<1000) (scanl1 (+) (map sqrt [1..]))) + 1
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> sqrtSums
+131
+ghci> sum (map sqrt [1..131])
+1005.0942035344083
+ghci> sum (map sqrt [1..130])
+993.6486803921487
+</pre>
+
+我們在這裡使用 `takeWhile` 而不是 `filter`，因為 `filter` 無法運作在無限的 list。即使我們知道 list 為升序的，但 `filter` 卻不知道，所以我們使用 `takeWhile` 在第一次發生總和大於 1000 的地方切割掃描清單。
+
 ## <a name="function-application">帶著 $ 的 function application</a>
 
 ## <a name="composition">Function composition</a>
