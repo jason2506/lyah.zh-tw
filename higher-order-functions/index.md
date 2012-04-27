@@ -4,6 +4,9 @@ title: 高階函數
 prev:
     url: recursion
     title: 遞迴
+next:
+    url: modules
+    title: 模組
 ---
 
 <img src="http://s3.amazonaws.com/lyah/sun.png" alt="sun" style="float:right" />
