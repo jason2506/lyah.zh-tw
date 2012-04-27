@@ -524,3 +524,93 @@ ghci> map ($ 3) [(4+), (10*), (^2), sqrt]
 </pre>
 
 ## <a name="composition">Function composition</a>
+
+在數學中，function composition 像這樣被定義成：<img src="img/composition.png" alt=" (f . g)(x) = f(g(x))" style="margin:0" />，代表組合（compose）兩個 function 以產生一個新的 function：當以一個參數──假設是 <i>x</i>──呼叫此 function，等同於以這個參數 <i>x</i> 呼叫 <i>g</i>，然後以其結果呼叫 <i>f</i>。
+
+在 Haskell 中，function composition 幾乎是相同的東西。我們藉由 `.` function 進行 function composition，它像這樣被定義：
+
+<pre name="code" class="haskell:hs">
+(.) :: (b -> c) -> (a -> b) -> a -> c
+f . g = \x -> f (g x)
+</pre>
+
+<img src="img/notes.png" alt="notes" style="float:left" />
+看到型別宣告。`f` 必須取與 `g` 的回傳值相同型別的一個參數值。所以最終的 function 接收一個與 `g` 接收的參數相同型別的參數，並回傳一個與 `f` 回傳值相同型別的值。`negate . (* 3)` 這個 expression 傳回一個接收一個數字、將它乘以 3 並取其負數的 function。
+
+function composition 的其中一個用途是快速建立 function 以傳遞到另一個 function。當然可以為此使用 lambda，但許多時候 function composition 更清楚也更簡潔。假使我們有個數字 list，而我們想要將它們全都轉成負數。一種方法是取得每個數字的絕對值，然後取其負數，像這樣：
+
+<pre name="code" class="haskell:ghci">
+ghci> map (\x -> negate (abs x)) [5,-3,-6,7,-3,2,-19,24]
+[-5,-3,-6,-7,-3,-2,-19,-24]
+</pre>
+
+注意到 lambda 與它看起來有多像 function composition。使用 function composition，我們可以改寫成這樣：
+
+<pre name="code" class="haskell:ghci">
+ghci> map (negate . abs) [5,-3,-6,7,-3,2,-19,24]
+[-5,-3,-6,-7,-3,-2,-19,-24]
+</pre>
+
+非常好！function composition 是右結合的，所以我們可以同時組合很多 function。`f (g (z x))` 這個 expression 等同於 `(f . g . z) x`。考慮到這個，我們可以將
+
+<pre name="code" class="haskell:ghci">
+ghci> map (\xs -> negate (sum (tail xs))) [[1..5],[3..6],[1..7]]
+[-14,-15,-27]
+</pre>
+
+改成
+
+<pre name="code" class="haskell:ghci">
+ghci> map (negate . sum . tail) [[1..5],[3..6],[1..7]]
+[-14,-15,-27]
+</pre>
+
+不過接收數個參數的 function 怎麼樣？嗯，若是我們想要將它使用在 function composition，我們通常必須部分應用它以使得每個 function 僅接收一個參數。
+`sum (replicate 5 (max 6.7 8.9))` 可以被改寫成 `(sum . replicate 5 . max 6.7) 8.9` 或是 `sum . replicate 5 . max 6.7 $ 8.9`。在這裡發生這些事：一個接收與 `max 6.7` 相同參數，並被套用在 `replicate 5` 的 function 被建立了。然後，一個接收其結果，然後求其總和的 function 被建立了。最後，這個 function 以 `8.9` 被呼叫。但通常，你只要讀作：將 `8.9` 套用到 `max 6.7`、對它套用 `replicate 5`，然後再對它套用 `sum`。如果你想要將一個帶著一堆括號的 expression 使用 function composition 改寫，你可以藉由將最裡面的 function 的最後一個參數擺在一個 `$` 後面，然後組合所有其他的 function 呼叫，將它們以缺少最後一個參數的形式撰寫，並在它們之中擺個點。若是你有個 `replicate 100 (product (map (*3) (zipWith max [1,2,3,4,5] [4,5,6,7,8])))`，你可以將它改寫成 `replicate 100 . product . map (*3) . zipWith max [1,2,3,4,5] $ [4,5,6,7,8]`。若是 expression 以三個括號結尾，你就有可能將它轉換成 function composition，而它將會有三個 composition 運算子。
+
+另一個常見的 function composition 用途是將 function 以稱之為 point free style（也被稱為 pointless style）的形式定義。以我們先前寫的這個 function 為例：
+
+<pre name="code" class="haskell:hs">
+sum' :: (Num a) => [a] -> a
+sum' xs = foldl (+) 0 xs
+</pre>
+
+`xs` 出現在兩者的右邊。由於 currying 的緣故，我們可以在兩邊的 `xs`，因為呼叫 `foldl (+) 0` 會建立一個接收一個 list 的 function。將 function 寫作 `sum' = foldl (+) 0` 被稱為以 point free style 撰寫它。我們要如何將它以 point free style 撰寫呢？
+
+<pre name="code" class="haskell:hs">
+fn x = ceiling (negate (tan (cos (max 50 x))))
+</pre>
+
+我們無法擺脫兩者右邊的 `x`。在 function 主體中的 `x` 有括號在其後。`cos (max 50)` 並無意義。你無法取得一個 function 的餘弦（cosine）。我們可以做的是將 `fn` 以 function 的組合表示。
+
+<pre name="code" class="haskell:hs">
+fn = ceiling . negate . tan . cos . max 50
+</pre>
+
+太好了！許多時候，point free style 更加易讀簡潔，因為它讓你思考 function 與怎麼樣的 function 組合其結果，而不是思考資料與如何傳遞它。你可以取個簡單的 function，然後把 composition 當做膠水使用以構成更複雜的 function。然而，許多時候，若是一個 function 太複雜，以 point free style 撰寫 function 會變得更不易讀。這就是為什麼建立很長一串 function composition 並不被推薦，雖然我自首我有時候太熱衷於 composition。優先考慮的形式是使用 <i>let</i> 綁定以給予中介結果一個標籤，或是將問題切割成子問題然後再組合在一起，以使得 function 對於閱讀它的人是合理的，而不是建立一個很大的 composition 鏈。
+
+在映射與過濾的那一節，我們解決了找出所有小於 10,000 的奇數平方的和的問題。這裡是當我們將解法擺進一個 function 時看起來的樣子：
+
+<pre name="code" class="haskell:hs">
+oddSquareSum :: Integer
+oddSquareSum = sum (takeWhile (<10000) (filter odd (map (^2) [1..])))
+</pre>
+
+作為 function composition 的粉絲，我大概會像這樣撰寫它：
+
+<pre name="code" class="haskell:hs">
+oddSquareSum :: Integer
+oddSquareSum = sum . takeWhile (<10000) . filter odd . map (^2) $ [1..]
+</pre>
+
+然而，若是其它人有機會讀到這段程式碼，我會像這樣撰寫它：
+
+<pre name="code" class="haskell:hs">
+oddSquareSum :: Integer
+oddSquareSum =
+    let oddSquares = filter odd $ map (^2) [1..]
+        belowLimit = takeWhile (<10000) oddSquares
+    in  sum belowLimit
+</pre>
+
+這贏不了任何程式碼炫技大賽，但閱讀 function 的某人可能會發現這比 composition 鏈更容易閱讀。
