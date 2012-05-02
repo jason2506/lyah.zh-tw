@@ -217,7 +217,7 @@ ghci> head (dropWhile (\(val,y,m,d) -> val < 1000) stock)
 (1001.4,2008,9,4)
 </pre>
 
-<code class="label function">span</code> 有點像是 `takeWhile`，只是它回傳的是一對 list。第一個 list 包含所有若是以相同的述部與相同的 list 呼叫 `takeWhile` 產生的 list 會包含的所有值。第二個 list 包含 list 
+<code class="label function">span</code> 有點像是 `takeWhile`，只是它回傳的是一對 list。第一個 list 包含所有若是以相同的述部與相同的 list 呼叫 `takeWhile` 產生的 list 會包含的所有值。第二個 list 包含 list
 被丟棄的部分。
 
 <pre name="code" class="haskell:ghci">
@@ -519,6 +519,176 @@ ghci> sortBy (compare `on` length) xs
 太棒了！``compare `on` length`` ... 嗯，這讀起來幾乎像是真的英文！如果你不確定這裡 `on` 是如何運作的，``compare `on` length`` 等同於 ``\x y -> length x `compare` length y``。當你處理取一個相等性 function 的 <i>By</i> function 的時候，你常會進行 ``(==) `on` something``；而當你處理接收一個次序 function，你常會進行 ``compare `on` something``。
 
 ## <a name="data-char">Data.Char</a>
+
+<img src="img/legochar.png" alt="lego char" style="float:right" />
+`Data.Char` 模組做的就是它的名稱所暗示的。它輸出處理字元的 function。它在過濾與映射到字串上時也是有用的，因為字串僅是字元的 list。
+
+`Data.Char` 輸出一些處理字元的述部。這即是：接收一個字元，並告訴我們某些關於它的假設是否為真的 function。以下這些即是：
+
+<code class="label function">isControl</code> 檢查一個字元是否是個控制字元。
+
+<code class="label function">isSpace</code> 檢查一個字元是否是個空白字元。這包含了空白、tab 字元、換行、等等。
+
+<code class="label function">isLower</code> 檢查一個字元是否為小寫。
+
+<code class="label function">isUpper</code> 檢查一個字元是否為大寫。
+
+<code class="label function">isAlpha</code> 檢查一個字元是否是個字母（letter）。
+
+<code class="label function">isAlphaNum</code> 檢查一個字元是否是個字母或是個數字。
+
+<code class="label function">isPrint</code> 檢查一個字元是否可印（printable）。舉例來說，控制字元不可印。
+
+<code class="label function">isDigit</code> 檢查一個字元是否是個數字<span class="note">〔譯註：包含 `0..9`〕</span>。
+
+<code class="label function">isOctDigit</code> 檢查一個字元是否是個八進位數字<span class="note">〔譯註：包含 `0..7`〕</span>。
+
+<code class="label function">isHexDigit</code> 檢查一個字元是否是個十六進位數字<span class="note">〔譯註：包含 `0..9`、`a..f`、與 `A..F]`〕</span>。
+
+<code class="label function">isLetter</code> 檢查一個字元是否是個字母<span class="note">〔譯註：等同於 `isAlpha`〕</span>。
+
+<code class="label function">isMark</code> 檢查 Unicode 標記（mark）字元。這些是結合前面的字母以組成帶口音字母的字元。如果你是法國人就用它吧。
+
+<code class="label function">isNumber</code> 檢查一個字元是否為數字<span class="note">〔譯註：除了 `0..9` 之外，亦包含其他 Unicode 的數字符號。請參考 Wikipedia 的 [Numerals in Unicode](http://en.wikipedia.org/wiki/Numerals_in_Unicode) 條目〕</span>。
+
+<code class="label function">isPunctuation</code> 檢查一個字元是否為標點符號。
+
+<code class="label function">isSymbol</code> 檢查一個字元是否是個花俏的數學或貨幣符號。
+
+<code class="label function">isSeparator</code> 檢查 Unicode 空白與分隔字元。
+
+<code class="label function">isAscii</code> 檢查一個字元是否落在 Unicode 字元集的前 128 個字元。
+
+<code class="label function">isLatin1</code> 檢查一個字元是否落在 Unicode 字元集的前 256 個字元。
+
+<code class="label function">isAsciiUpper</code> 檢查一個字元是否為 ASCII 大寫字元。
+
+<code class="label function">isAsciiLower</code> 檢查一個字元是否為 ASCII 小寫字元。
+
+所有這些述部的型別都是 `Char -> Bool`。很多時候你會使用它來過濾字串或是類似的東西。舉例來說，讓我們假設我們要建立一個接收使用者名稱，且使用者名稱只能以字母和數字組成的程式。我們可以使用 `Data.List` 的 `all` function 結合 `Data.Char` 的述部來判斷使用者名稱是否正確。
+
+<pre name="code" class="haskell:ghci">
+ghci> all isAlphaNum "bobby283"
+True
+ghci> all isAlphaNum "eddy the fish!"
+False
+</pre>
+
+酷。萬一你不記得，`all` 接收一個述部與一個 list，並只在述部對每個 list 中的元素成立時回傳 `True`。
+
+我們也可以使用 `isSpace` 來模擬 `Data.List` 的 `words` function。
+
+<pre name="code" class="haskell:ghci">
+ghci> words "hey guys its me"
+["hey","guys","its","me"]
+ghci> groupBy ((==) `on` isSpace) "hey guys its me"
+["hey"," ","guys"," ","its"," ","me"]
+ghci>
+</pre>
+
+唔，好，有點 `words` 的樣子了，但是我們還留著只有空白的元素。唔，有什麼是我們該做的呢？我知道了，讓我們過濾它們。
+
+<pre name="code" class="haskell:ghci">
+ghci> filter (not . any isSpace) . groupBy ((==) `on` isSpace) $ "hey guys its me"
+["hey","guys","its","me"]
+</pre>
+
+阿。
+
+`Data.Char` 也輸出一個有點像是 `Ordering` 的資料型別。`Ordering` 型別可以為 `LT`、`EQ` 或是 `GT`。這是一種列舉。它描述了一些比較兩個元素可以出現的可能結果。`GeneralCategory` 型別也是個列舉。它提供給我們一些字元可能落入的分類（category）。要取得一個字元大體分類的主要 function 為 `generalCategory`。它的型別為 `generalCategory :: Char -> GeneralCategory`。大約有 31 種分類，所以我們不會在這裡一一列出它們，但讓我們來玩玩這個 function。
+
+<pre name="code" class="haskell:ghci">
+ghci> generalCategory ' '
+Space
+ghci> generalCategory 'A'
+UppercaseLetter
+ghci> generalCategory 'a'
+LowercaseLetter
+ghci> generalCategory '.'
+OtherPunctuation
+ghci> generalCategory '9'
+DecimalNumber
+ghci> map generalCategory " \t\nA9?|"
+[Space,Control,Control,UppercaseLetter,DecimalNumber,OtherPunctuation,MathSymbol]
+</pre>
+
+由於 `GeneralCategory` 型別為 `Eq` typeclass 的一員，所以我們可以做像 `generalCategory c == Space` 這樣的測試。
+
+<code class="label function">toUpper</code> 將一個字元轉成大寫。空白、數字、與類似的字元不會被改變。
+
+<code class="label function">toLower</code> 將一個字元轉成小寫。
+
+<code class="label function">toTitle</code> 將一個字元轉成 title-case。對於大部分的字元，title-case 與大寫相同。
+
+<code class="label function">digitToInt</code> 將一個字元轉成一個 `Int`。要成功轉換，字元必須在 `'0'..'9'`、`'a'..'f'` 或是 `'A'..'F'` 的範圍中。
+
+<pre name="code" class="haskell:ghci">
+ghci> map digitToInt "34538"
+[3,4,5,3,8]
+ghci> map digitToInt "FF85AB"
+[15,15,8,5,10,11]
+</pre>
+
+<code class="label function">intToDigit</code> 為 `digitToInt` 的反函數。它取一個介在 `0..15` 之間的 `Int`，並將它轉成一個小寫字元。
+
+<pre name="code" class="haskell:ghci">
+ghci> intToDigit 15
+'f'
+ghci> intToDigit 5
+'5'
+</pre>
+
+<code class="label function">ord</code> 與 <code class="label function">chr</code> function 將字元轉成其對應的數字，或是將數字轉成其對應的字元：
+
+<pre name="code" class="haskell:ghci">
+ghci> ord 'a'
+97
+ghci> chr 97
+'a'
+ghci> map ord "abcdefgh"
+[97,98,99,100,101,102,103,104]
+</pre>
+
+兩個字元 `ord` 值之間的差距等同於它們在 Unicode 表格中間隔多遠。
+
+凱薩密碼（Caesar cipher）是個藉由在字母表中以固定數量的位置偏移（shift）訊息中的每個字元，以編碼（encode）訊息的原始方法。我們可以輕易地建立一種我們自己的凱薩密碼，只是我們不會受限於字母表。
+
+<pre name="code" class="haskell:hs">
+encode :: Int -> String -> String
+encode shift msg =
+    let ords = map ord msg
+        shifted = map (+ shift) ords
+    in  map chr shifted
+</pre>
+
+這裡，我們先將字串轉換成一組數字 list。這時在將數字 list 轉換回字元之前，我們將每個數字加上偏移量。如果你是個組合牛仔，你可以將這個 function 的主體寫成 `map (chr . (+ shift) . ord) msg`。讓我們試著編碼一些訊息。
+
+<pre name="code" class="haskell:ghci">
+ghci> encode 3 "Heeeeey"
+"Khhhhh|"
+ghci> encode 4 "Heeeeey"
+"Liiiii}"
+ghci> encode 1 "abcd"
+"bcde"
+ghci> encode 5 "Marry Christmas! Ho ho ho!"
+"Rfww~%Hmwnxyrfx&%Mt%mt%mt&"
+</pre>
+
+編碼沒問題了。解碼（decode）一個訊息基本上只是以第一次偏移的數量，將它偏移回去。
+
+<pre name="code" class="haskell:hs">
+decode :: Int -> String -> String
+decode shift msg = encode (negate shift) msg
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> encode 3 "Im a little teapot"
+"Lp#d#olwwoh#whdsrw"
+ghci> decode 3 "Lp#d#olwwoh#whdsrw"
+"Im a little teapot"
+ghci> decode 5 . encode 5 $ "This is a sentence"
+"This is a sentence"
+</pre>
 
 ## <a name="data-map">Data.Map</a>
 
