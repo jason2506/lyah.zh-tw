@@ -50,7 +50,7 @@ import Data.List (nub, sort)
 import Data.List hiding (nub)
 </pre>
 
-另一種處理名稱衝突的方式是執行限制（qualified）引入。`Data.Map` 模組──其提供一個藉由鍵（key）尋找值的資料結構──輸出一堆與 `Prelude` 相同名稱的 function，像是 `filter` 或是 `null`。所以當我們引入 `Data.Map` 然後呼叫 `filter` 的時候，Haskell 無法知道要用哪個 function。以下是我們如何解決這個問題：
+另一種處理名稱衝突的方式是執行限制（qualified）引入。`Data.Map` 模組──其提供一個藉由 key 尋找 value 的資料結構──輸出一堆與 `Prelude` 相同名稱的 function，像是 `filter` 或是 `null`。所以當我們引入 `Data.Map` 然後呼叫 `filter` 的時候，Haskell 無法知道要用哪個 function。以下是我們如何解決這個問題：
 
 <pre name="code" class="haskell:hs">
 import qualified Data.Map
@@ -691,6 +691,247 @@ ghci> decode 5 . encode 5 $ "This is a sentence"
 </pre>
 
 ## <a name="data-map">Data.Map</a>
+
+關聯列表（association list，也被稱為字典）是用以儲存 key-value pair，而順序無關緊要的 list。舉例來說，我們可能會使用一個關聯列表來儲存電話號碼，其中電話號碼會是 value，而人名會是 key。我們並不關心它儲存的順序，我們只想要為正確的人取得正確的電話號碼。
+
+在 Haskell 中，藉由一個 pair list 表達關聯列表是個最明顯的作法。pair 中的第一項會是 key，第二項是 value。這裡有個電話號碼的關聯列表範例：
+
+<pre name="code" class="haskell:hs">
+phoneBook =
+    [("betty","555-2938")
+    ,("bonnie","452-2928")
+    ,("patsy","493-2928")
+    ,("lucille","205-2928")
+    ,("wendy","939-8282")
+    ,("penny","853-2492")
+    ]
+</pre>
+
+儘管這似乎縮排地很怪，但這就是個字串的 pair list。在處理關聯列表時，最常見的任務是藉由 key 來尋找某個 value。讓我們建立一個給定一個 key 以尋找某個 value 的 function。
+
+<pre name="code" class="haskell:hs">
+findKey :: (Eq k) => k -> [(k,v)] -> v
+findKey key xs = snd . head . filter (\(k,v) -> key == k) $ xs
+</pre>
+
+十分簡單。這個 function 接收一個 key 與一個 list、過濾 list 使得只有匹配的 key 被留下來、取出第一個匹配的 key-value 並回傳 value。但如果我們尋找的 key 不在關聯 list 裡頭會發生什麼呢？唔。在這裡，假使一個 key 不在關聯列表中，我們最後會試著取一個空 list 的 head，這會拋出一個執行期錯誤。然而，我們需要避免讓我們的程式這麼簡單就崩潰，所以讓我們使用 `Maybe` 資料型別。若是我們沒有找到 key，我們就回傳一個 `Nothing`。若是我們找到它，我們就回傳 `Just something`，其中 something 為對應到這個 key 的 value。
+
+<pre name="code" class="haskell:hs">
+findKey :: (Eq k) => k -> [(k,v)] -> Maybe v
+findKey key [] = Nothing
+findKey key ((k,v):xs) = if key == k
+                            then Just v
+                            else findKey key xs
+</pre>
+
+看看型別宣告。它取一個可以被比較相等性的 key 與一個關聯列表，然後它或許會產生一個值。聽起來是對的。
+
+這是一個處理一個 list 的標準遞迴 function。邊界案例、將一個 list 切割成 head 與 tail、遞迴呼叫，全都有了。這是個典型的摺疊模式，所以讓我們看看如何將它以摺疊實作。
+
+<pre name="code" class="haskell:hs">
+findKey :: (Eq k) => k -> [(k,v)] -> Maybe v
+findKey key = foldr (\(k,v) acc -> if key == k then Just v else acc) Nothing
+</pre>
+
+<p class="hint">
+<em>註記：</em>為這種標準的 list 遞迴模式使用摺疊，而不是明確寫出遞迴通常是比較好的，因為它更加容易閱讀與辨認。當人們看到 <code>foldr</code> 呼叫的時候，每個人都知道它是個摺疊，但閱讀明確的遞迴需要更多的思考。
+</p>
+
+<pre name="code" class="haskell:ghci">
+ghci> findKey "penny" phoneBook
+Just "853-2492"
+ghci> findKey "betty" phoneBook
+Just "555-2938"
+ghci> findKey "wilma" phoneBook
+Nothing
+</pre>
+
+<img src="img/legomap.png" alt="legomap" style="float:left" />
+太不可思議了！假如我們有女孩的電話號碼，我們「就」得到了這個號碼（we `Just` get the number），否則我們什麼也拿不到（we get `Nothing`）。
+
+我們剛才實作了 `Data.List` 裡的 `lookup` function。假如我們想要尋找對應一個 key 的 value，我們必須要尋訪 list 中的所有元素，直到我們找到它。`Data.Map` 模組提供更快速的關聯列表（因為它以樹進行內部實作），它也提供很多實用的 function。從現在開始，我們將假設我們用的是 map 而非關聯列表。
+
+因為 `Data.Map` 會輸出與 `Prelude` 和 `Data.List` 衝突的 function，所以我們要進行限制引入。
+
+<pre name="code" class="haskell:hs">
+import qualified Data.Map as Map
+</pre>
+
+將這個引入敘述擺在腳本裡，然後透過 GHCI 載入腳本。
+
+讓我們繼續前進，看看等著我們的 `Data.Map` 有些什麼！以下為其 function 的概要。
+
+<code class="label function">fromList</code> function 接收一個關聯列表（以一個 list 的形式），並回傳具有相同關聯的 map。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.fromList [("betty","555-2938"),("bonnie","452-2928"),("lucille","205-2928")]
+fromList [("betty","555-2938"),("bonnie","452-2928"),("lucille","205-2928")]
+ghci> Map.fromList [(1,2),(3,4),(3,2),(5,5)]
+fromList [(1,2),(3,2),(5,5)]
+</pre>
+
+若是在原始的關聯列表裡有重複的 key，重複的那個就會被丟棄。這是 `fromList` 的型別簽名：
+
+<pre name="code" class="haskell:hs">
+Map.fromList :: (Ord k) => [(k, v)] -> Map.Map k v
+</pre>
+
+這表明它取一個型別為 `k` 與 `v` 的 pair list，並回傳一個從型別為 `k` 的 key 映射到型別 `v` 的 map。注意到，當你以一般的 list 表示關聯列表時，key 只要可以比較相等性（其型別屬於`Eq` typeclass）即可，但現在它必須要是可以排序的。這是在 `Data.Map` 模組中的一個本質限制。它需要 key 是可以排序的，以讓它能夠在一棵樹中排列它們。
+
+你始終都應該使用 `Data.Map` 表示 key-value 關聯，除非你有個並非為 `Ord` typeclass 一員的 key。
+
+<code class="label function">empty</code> 表示一個空 map。它不接收引數，它僅回傳一個空的 map。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.empty
+fromList []
+</pre>
+
+<code class="label function">insert</code> 接收一個 key、一個 value 與一個 map，並回傳一個就像是舊的 map，只是插入 key 與 value 的 map。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.empty
+fromList []
+ghci> Map.insert 3 100 Map.empty
+fromList [(3,100)]
+ghci> Map.insert 5 600 (Map.insert 4 200 ( Map.insert 3 100  Map.empty))
+fromList [(3,100),(4,200),(5,600)]
+ghci> Map.insert 5 600 . Map.insert 4 200 . Map.insert 3 100 $ Map.empty
+fromList [(3,100),(4,200),(5,600)]
+</pre>
+
+我們可以藉由使用空 map、`insert` 與摺疊來實作我們自己的 `fromList`。看：
+
+<pre name="code" class="haskell:hs">
+fromList' :: (Ord k) => [(k,v)] -> Map.Map k v
+fromList' = foldr (\(k,v) acc -> Map.insert k v acc) Map.empty
+</pre>
+
+這是個非常直觀的摺疊。我們以一個空 map 開始，我們將它從右開始摺疊，並在進行時將 key-value pair 插入到累加器。
+
+<code class="label function">null</code> 檢查 map 是否為空。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.null Map.empty
+True
+ghci> Map.null $ Map.fromList [(2,3),(5,5)]
+False
+</pre>
+
+<code class="label function">size</code> 回報 map 的大小。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.size Map.empty
+0
+ghci> Map.size $ Map.fromList [(2,4),(3,3),(4,2),(5,4),(6,4)]
+5
+</pre>
+
+<code class="label function">singleton</code> 接收一個 key 與一個 value，並建立一個僅有一組映射的 map。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.singleton 3 9
+fromList [(3,9)]
+ghci> Map.insert 5 9 $ Map.singleton 3 9
+fromList [(3,9),(5,9)]
+</pre>
+
+<code class="label function">lookup</code> 如同 `Data.List` `lookup` 那般運作，只是它操作的是 map。它會在它找到對應 key 的 something 時回傳 `Just something`，並在沒找到時回傳 `Nothing`。
+
+<code class="label function">member</code> 為一個接收一個 key 與一個 map，並回報 key 是否在 map 中的述部。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.member 3 $ Map.fromList [(3,6),(4,3),(6,9)]
+True
+ghci> Map.member 3 $ Map.fromList [(2,5),(4,5)]
+False
+</pre>
+
+<code class="label function">map</code> 與 <code class="label function">filter</code> 運作地非常像是它們的 list 版本。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.map (*100) $ Map.fromList [(1,1),(2,4),(3,9)]
+fromList [(1,100),(2,400),(3,900)]
+ghci> Map.filter isUpper $ Map.fromList [(1,'a'),(2,'A'),(3,'b'),(4,'B')]
+fromList [(2,'A'),(4,'B')]
+</pre>
+
+<code class="label function">toList</code> 為 `fromList` 的反函數。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.toList . Map.insert 9 2 $ Map.singleton 4 3
+[(4,3),(9,2)]
+</pre>
+
+<code class="label function">keys</code> 與 <code class="label function">elems</code> 分別傳回 key 與 value 的 list。`keys` 等同於 `map fst . Map.toList` 且 `elems` 等同於 `map snd . Map.toList`。
+
+<code class="label function">fromListWith</code> 是個很酷的小 function。它就像 `fromList`，只是它並不丟棄重複的 key，而是使用提供給它的 function 來決定該對它做什麼。讓我們假定一個女孩可以有多個號碼，而我們有個像這樣設置的關聯列表：
+
+<pre name="code" class="haskell:hs">
+phoneBook =
+    [("betty","555-2938")
+    ,("betty","342-2492")
+    ,("bonnie","452-2928")
+    ,("patsy","493-2928")
+    ,("patsy","943-2929")
+    ,("patsy","827-9162")
+    ,("lucille","205-2928")
+    ,("wendy","939-8282")
+    ,("penny","853-2492")
+    ,("penny","555-2111")
+    ]
+</pre>
+
+現在若是我們使用 `fromList` 來將它擺進一個 map，我們會丟失一些號碼！所以這裡我們要這麼做：
+
+<pre name="code" class="haskell:hs">
+phoneBookToMap :: (Ord k) => [(k, String)] -> Map.Map k String
+phoneBookToMap xs = Map.fromListWith (\number1 number2 -> number1 ++ ", " ++ number2) xs
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.lookup "patsy" $ phoneBookToMap phoneBook
+"827-9162, 943-2929, 493-2928"
+ghci> Map.lookup "wendy" $ phoneBookToMap phoneBook
+"939-8282"
+ghci> Map.lookup "betty" $ phoneBookToMap phoneBook
+"342-2492, 555-2938"
+</pre>
+
+假如一個重複的 key 被找到，我們傳遞的 function 會被用來將這些 key 的 value 結合成某個別的 value。我們也可以先將關聯列表中所有的 value 建成單一元素的 list，然後我們可以使用 `++` 來結合號碼。
+
+<pre name="code" class="haskell:hs">
+phoneBookToMap :: (Ord k) => [(k, a)] -> Map.Map k [a]
+phoneBookToMap xs = Map.fromListWith (++) $ map (\(k,v) -> (k,[v])) xs
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.lookup "patsy" $ phoneBookToMap phoneBook
+["827-9162","943-2929","493-2928"]
+</pre>
+
+非常好！另一個使用情況是，假如我們要從一個數字的關聯列表建立一個 map，且在一個重複的 key 被找到時，我們要保留這個 key 的最大 value。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.fromListWith max [(2,3),(2,5),(2,100),(3,29),(3,22),(3,11),(4,22),(4,15)]
+fromList [(2,100),(3,29),(4,22)]
+</pre>
+
+或是，我們可以選擇加總相同 key 的 value。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.fromListWith (+) [(2,3),(2,5),(2,100),(3,29),(3,22),(3,11),(4,22),(4,15)]
+fromList [(2,108),(3,62),(4,37)]
+</pre>
+
+<code class="label function">insertWith</code> 之於 `insert` 猶如 `fromListWith` 之於 `fromList`。它將一個 key-value pair 插入到一個 map 中，但若是這個 map 已經包含這個 key，它會使用傳遞給它的 function 來決定該做什麼。
+
+<pre name="code" class="haskell:ghci">
+ghci> Map.insertWith (+) 3 100 $ Map.fromList [(3,4),(5,103),(6,339)]
+fromList [(3,104),(5,103),(6,339)]
+</pre>
+
+還有一些 `Data.Map` 的 function。你可以在這份[文件](http://www.haskell.org/ghc/docs/latest/html/libraries/containers/Data-Map.html#v%3Aassocs)中看到一份完整的清單。
 
 ## <a name="data-set">Data.Set</a>
 
