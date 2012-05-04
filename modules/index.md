@@ -935,4 +935,111 @@ fromList [(3,104),(5,103),(6,339)]
 
 ## <a name="data-set">Data.Set</a>
 
+<img src="img/legosets.png" alt="legosets" style="float:right" />
+`Data.Set` 模組提供給我們，嗯，set。像是數學中的集合。set 有點像是 list 與 map 之間的過渡。所有在一個 set 裡的元素都是唯一的。且因為它是以樹進行內部實作（非常像是 `Data.Map` 中的 map），所以它們是有順序的。檢查成員關係、插入、刪除等等，比起用 list 做相同的事要快得多。處理 set 時最常見的操作是插入到一個 set、檢查成員關係以及將一個 set 轉換成一個 list。
+
+因為在 `Data.Set` 中的名稱會與許多 `Prelude` 與 `Data.List` 的名稱衝突，所以我們要進行限制引入。
+
+將這個引入敘述擺進腳本中：
+
+<pre name="code" class="haskell:hs">
+import qualified Data.Set as Set
+</pre>
+
+然後透過 GHCI 載入腳本。
+
+讓我們假設我們有兩段文字。我們想要找出有哪些字元同時被使用在兩者之中。
+
+<pre name="code" class="haskell:hs">
+text1 = "I just had an anime dream. Anime... Reality... Are they so different?"
+text2 = "The old man left his garbage can out and now his trash is all over my lawn!"
+</pre>
+
+<code class="label function">fromList</code> function 運作地非常像你所預期的。它取一個 list 並將它轉換成一個 set。
+
+<pre name="code" class="haskell:ghci">
+ghci> let set1 = Set.fromList text1
+ghci> let set2 = Set.fromList text2
+ghci> set1
+fromList " .?AIRadefhijlmnorstuy"
+ghci> set2
+fromList " !Tabcdefghilmnorstuvwy"
+</pre>
+
+如你所見，元素是有順序的，且每個元素都是唯一的。現在讓我們使用 <code class="label function">intersection</code> function 來看看它們共享的元素。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.intersection set1 set2
+fromList " adefhilmnorstuy"
+</pre>
+
+我們可以使用 <code class="label function">difference</code> function 來看看哪個字母在第一個 set 中，但不在第二個 set 中，反之亦然。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.difference set1 set2
+fromList ".?AIRj"
+ghci> Set.difference set2 set1
+fromList "!Tbcgvw"
+</pre>
+
+或者，我們可以藉由使用 <code class="label function">union</code> 來看看所有被使用在兩個段落中的唯一字母。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.union set1 set2
+fromList " !.?AIRTabcdefghijlmnorstuvwy"
+</pre>
+
+<code class="label function">null</code>、<code class="label function">size</code>、<code class="label function">member</code>、<code class="label function">empty</code>、<code class="label function">singleton</code>、<code class="label function">insert</code> 與 <code class="label function">delete</code> function 全都如你所預期地運作。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.null Set.empty
+True
+ghci> Set.null $ Set.fromList [3,4,5,5,4,3]
+False
+ghci> Set.size $ Set.fromList [3,4,5,3,4,5]
+3
+ghci> Set.singleton 9
+fromList [9]
+ghci> Set.insert 4 $ Set.fromList [9,3,8,1]
+fromList [1,3,4,8,9]
+ghci> Set.insert 8 $ Set.fromList [5..10]
+fromList [5,6,7,8,9,10]
+ghci> Set.delete 4 $ Set.fromList [3,4,5,4,3,4,5]
+fromList [3,5]
+</pre>
+
+我們也可以檢驗子集（subset）或是嚴格子集（proper subset）。若是集合 B 包含所有集合 A 包含的所有元素，A 就是 B 的子集。若是集合 B 包含所有集合 A 包含的所有元素，但還擁有更多的元素，A 就是 B 的嚴格子集。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.fromList [2,3,4] `Set.isSubsetOf` Set.fromList [1,2,3,4,5]
+True
+ghci> Set.fromList [1,2,3,4,5] `Set.isSubsetOf` Set.fromList [1,2,3,4,5]
+True
+ghci> Set.fromList [1,2,3,4,5] `Set.isProperSubsetOf` Set.fromList [1,2,3,4,5]
+False
+ghci> Set.fromList [2,3,4,8] `Set.isSubsetOf` Set.fromList [1,2,3,4,5]
+False
+</pre>
+
+我們也可以套用 <code class="label function">map</code> 在 set 上與 <code class="label function">filter</code> 它。
+
+<pre name="code" class="haskell:ghci">
+ghci> Set.filter odd $ Set.fromList [3,4,5,6,7,2,3,4]
+fromList [3,5,7]
+ghci> Set.map (+1) $ Set.fromList [3,4,5,6,7,2,3,4]
+fromList [3,4,5,6,7,8]
+</pre>
+
+set 通常藉由先將 list 以 `fromList` 建成一個 set，然後再將它以 <code class="label function">toList</code> 轉回成一個 list 來從一個 list 中去除重複元素。雖然 `Data.List` 的 `nub` function 已經能做到這件事，但如果你將一個大 list 填入 set 中，然後將它轉換回一個 list 來去除重複元素，比起使用 `nub` 來得更快。但使用 `nub` 時 list 的元素型別只要求為 `Eq` typeclass 的一員，而若是你想要將元素填入一個 set，list 的型別則必須屬於 `Ord`。
+
+<pre name="code" class="haskell:ghci">
+ghci> let setNub xs = Set.toList $ Set.fromList xs
+ghci> setNub "HEY WHATS CRACKALACKIN"
+" ACEHIKLNRSTWY"
+ghci> nub "HEY WHATS CRACKALACKIN"
+"HEY WATSCRKLIN"
+</pre>
+
+<code class="label function">setNub</code> 處理大 list 通常比 `nub` 還快，但如你所見，`nub` 會保留 list 元素的順序，而 `setNub` 則否。
+
 ## <a name="making-our-own-modules">建立我們自己的模組</a>
