@@ -1043,3 +1043,143 @@ ghci> nub "HEY WHATS CRACKALACKIN"
 <code class="label function">setNub</code> 處理大 list 通常比 `nub` 還快，但如你所見，`nub` 會保留 list 元素的順序，而 `setNub` 則否。
 
 ## <a name="making-our-own-modules">建立我們自己的模組</a>
+
+<img src="img/making_modules.png" alt="making modules" style="float:right" />
+我們至今已經看過許多很酷的模組，但是我們要如何做個我們自己的模組呢？幾乎每個程式語言都使你能夠將你的程式碼切割成多個檔案，Haskell 也不例外。在建立程式時，將有著類似用途的 function 與型別擺進一個模組是個好習慣。這樣一來，你可以在其他程式中藉由引入你的模組輕易地重用這些 function。
+
+讓我們藉由建立一個提供一些計算幾何物件體積與面積的小模組，來看看我們可以如何建立我們自己的模組。我們要從建立一個叫做 `Geometry.hs` 的檔案開始。
+
+我們假設一個模組輸出多個 function。意思是，當我引入一個模組時，我可以使用它所輸出的 function。它可以定義它的 function 在內部呼叫的 function，但我們只能看到並使用它輸出的那些。
+
+在一個模組的開頭，我們指定模組的名稱。若是我們有個叫做 `Geometry.hs` 的檔案，這時我們就需要將我們的模組命名為 `Geometry`。然後，我們指定它所輸出的 function，在這之後我們就可以開始撰寫這些 function。所以我們要從這個開始：
+
+<pre name="code" class="haskell:hs">
+module Geometry
+( sphereVolume
+, sphereArea
+, cubeVolume
+, cubeArea
+, cuboidArea
+, cuboidVolume
+) where
+</pre>
+
+如你所見，我們要為球體、立方體與長方體求取面積與體積。繼續向前，接著定義我們的 function：
+
+<pre name="code" class="haskell:ghci">
+module Geometry
+( sphereVolume
+, sphereArea
+, cubeVolume
+, cubeArea
+, cuboidArea
+, cuboidVolume
+) where
+
+sphereVolume :: Float -> Float
+sphereVolume radius = (4.0 / 3.0) * pi * (radius ^ 3)
+
+sphereArea :: Float -> Float
+sphereArea radius = 4 * pi * (radius ^ 2)
+
+cubeVolume :: Float -> Float
+cubeVolume side = cuboidVolume side side side
+
+cubeArea :: Float -> Float
+cubeArea side = cuboidArea side side side
+
+cuboidVolume :: Float -> Float -> Float -> Float
+cuboidVolume a b c = rectangleArea a b * c
+
+cuboidArea :: Float -> Float -> Float -> Float
+cuboidArea a b c = rectangleArea a b * 2 + rectangleArea a c * 2 + rectangleArea c b * 2
+
+rectangleArea :: Float -> Float -> Float
+rectangleArea a b = a * b
+</pre>
+
+非常標準的幾何學就在這裡。還有一些需要注意的東西。因為一個立方體僅是長方體的一個特例，所以我們藉由將它視為一個邊長全都相同的長方體來定義它的面積與體積。我們也定義一個叫做 `rectangleArea` 的輔助 function，其基於矩型的邊長計算矩型面積。這比較普通，因為它僅僅是乘法而已。注意到我們將它使用在我們的模組中的 function 裡（即 `cuboidArea` 與 `cuboidVolume`），但我們並不輸出它！因為我們想讓我們的模組只提供處理三維物件的 function，所以我們使用 `rectangleArea` 但不輸出它。
+
+建立一個模組時，我們通常只輸出作為我們模組介面的那些 function 以隱藏實作細節。若是某個人使用了我們的 `Geometry` 模組，他不必關心我們沒有輸出的 function。我們可以決定完全改變這些 function，或是在一個比較新的版本刪除它們（我們可以刪除 `rectangleArea` 並僅以 `*` 取代），且因為我們並沒有輸出它們，所以沒有人會在意這些改變。
+
+要使用我們的模組，我們只需要：
+
+<pre name="code" class="haskell:hs">
+import Geometry
+</pre>
+
+`Geometry.hs` 必須在與引入它的程式所在的相同目錄中。
+
+模組也可以被給予一階層結構。每個模組可以擁有一些子模組，而它們也可以有它們自己的子模組。讓我們將這些 function 分組，使得 `Geometry` 為一個擁有三個子模組──每個對應一個物件型別──的模組。
+
+首先，我們要建立一個叫做 `Geometry` 的目錄。留心開頭大寫字母 G。在其中，我們要擺進三個檔案：`Sphere.hs`、`Cuboid.hs`、與 `Cube.hs`。以下是檔案將會包含的內容：
+
+`Sphere.hs`
+
+<pre name="code" class="haskell:hs">
+module Geometry.Sphere
+( volume
+, area
+) where
+
+volume :: Float -> Float
+volume radius = (4.0 / 3.0) * pi * (radius ^ 3)
+
+area :: Float -> Float
+area radius = 4 * pi * (radius ^ 2)
+</pre>
+
+`Cuboid.hs`
+
+<pre name="code" class="haskell:hs">
+module Geometry.Cuboid
+( volume
+, area
+) where
+
+volume :: Float -> Float -> Float -> Float
+volume a b c = rectangleArea a b * c
+
+area :: Float -> Float -> Float -> Float
+area a b c = rectangleArea a b * 2 + rectangleArea a c * 2 + rectangleArea c b * 2
+
+rectangleArea :: Float -> Float -> Float
+rectangleArea a b = a * b
+</pre>
+
+`Cube.hs`
+
+<pre name="code" class="haskell:hs">
+module Geometry.Cube
+( volume
+, area
+) where
+
+import qualified Geometry.Cuboid as Cuboid
+
+volume :: Float -> Float
+volume side = Cuboid.volume side side side
+
+area :: Float -> Float
+area side = Cuboid.area side side side
+</pre>
+
+非常好！所以首先是 `Geometry.Sphere`。注意到我們將它擺進一個叫做 `Geometry` 的目錄中，然後將模組名稱定義為 `Geometry.Sphere`。我們也對長方體做一樣的事。同樣注意到我們如何在三個子模組中定義有著相同名稱的 function。因為它們為獨立的模組，所以我們可以這麼做。我們要在 `Geometry.Cube` 使用 `Geometry.Cuboid` 的 function，但我們無法直接進行 `import Geometry.Cuboid`，因為它輸出與 `Geometry.Cube` 相同名稱的 function。這就是為什麼我們要進行限制引入，且一切良好的原因。
+
+所以現在假使我們在一個與 `Geometry` 目錄同層級的檔案中，我們可以做：
+
+<pre name="code" class="haskell:hs">
+import Geometry.Sphere
+</pre>
+
+然後我們呼叫 `area` 與 `volume`，然後它將會告訴我們一個球體的面積與體積。若是我們要使用兩個或更多這些模組，我們就必須要進行限制引入，因為它們輸出具有相同名稱的 function。所以我們像這樣做：
+
+<pre name="code" class="haskell:hs">
+import qualified Geometry.Sphere as Sphere
+import qualified Geometry.Cuboid as Cuboid
+import qualified Geometry.Cube as Cube
+</pre>
+
+然後我們可以呼叫 `Sphere.area`、`Sphere.volume`、`Cuboid.area`、等等，而它們將會針對它們對應的物件計算面積或是體積。
+
+下一次你發現你自己寫了一個非常大且擁有許多 function 的檔案，就試著看看有哪些提供某些共同用途的 function，然後看看你是否能將它們擺進它們自己的模組中。在你下一次寫一個需要某些相同功能的程式時，你就能夠引入你的模組。
