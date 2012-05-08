@@ -160,6 +160,104 @@ module Shapes
 
 ## <a name="record-syntax">Record 語法</a>
 
+<img src="img/record.png" alt="record" style="float:right" />
+好，我們要負責建立一個描述一個人的資料型別。我們要儲存的關於人的資訊是：名字、姓氏、年齡、身高、電話號碼、以及最愛的冰淇淋口味。我不知道你怎麼樣，但這就是關於一個人我想知道的全部了。讓我們來試試看吧！
+
+<pre name="code" class="haskell:hs">
+data Person = Person String String Int Float String String deriving (Show)
+</pre>
+
+好，第一欄為名字、第二欄為姓氏、第三欄為年齡，以此類推。讓我們建立一個 person。
+
+<pre name="code" class="haskell:ghci">
+ghci> let guy = Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"
+ghci> guy
+Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"
+</pre>
+
+這有點兒酷，雖然稍微不太好讀。若是我們想要建立一個從一個 person 取得獨立資訊的 function 呢？一個取得某個 person 名字的 function、一個取得某個 person 的姓氏、等等。嗯，我們必須像這樣定義它們：
+
+<pre name="code" class="haskell:hs">
+firstName :: Person -> String
+firstName (Person firstname _ _ _ _ _) = firstname
+
+lastName :: Person -> String
+lastName (Person _ lastname _ _ _ _) = lastname
+
+age :: Person -> Int
+age (Person _ _ age _ _ _) = age
+
+height :: Person -> Float
+height (Person _ _ _ height _ _) = height
+
+phoneNumber :: Person -> String
+phoneNumber (Person _ _ _ _ number _) = number
+
+flavor :: Person -> String
+flavor (Person _ _ _ _ _ flavor) = flavor
+</pre>
+
+呼！我當然不喜歡這樣寫！儘管寫起來非常累贅且**無聊**，這種方法還是可以運作的。
+
+<pre name="code" class="haskell:ghci">
+ghci> let guy = Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"
+ghci> firstName guy
+"Buddy"
+ghci> height guy
+184.2
+ghci> flavor guy
+"Chocolate"
+</pre>
+
+你說，必須有個更好的方法！不，沒有，抱歉。
+
+開個玩笑，有啦。哈哈！Haskell 的創作者都非常聰明，並預料到了這種情況。他們引入了一個撰寫資料型別的替代方法。以下就是我們如何以 record 語法達成上面的功能。
+
+<pre name="code" class="haskell:hs">
+data Person = Person { firstName :: String
+                     , lastName :: String
+                     , age :: Int
+                     , height :: Float
+                     , phoneNumber :: String
+                     , flavor :: String
+                     } deriving (Show)
+</pre>
+
+所以並非一個接著一個寫下欄位名稱並以空白分隔，我們要使用大括號。我們先寫下欄位的名稱──舉例來說，`firstName`，然後我們寫下兩個冒號 `::`（也被稱為 Paamayim Nekudotayim<span class="note">〔譯註：希伯來語，「兩個冒號」的意思〕</span>，哈哈），然後我們指定其型別。產生的資料型別完全相同。這樣的主要好處是，它建立了查詢資料型別中欄位的 function。藉由使用 record 語法來建立這個資料型別，Haskell 會自動建立這些 function：`firstName`、`lastName`、`age`、`height`、`phoneNumber` 與 `flavor`。
+
+<pre name="code" class="haskell:ghci">
+ghci> :t flavor
+flavor :: Person -> String
+ghci> :t firstName
+firstName :: Person -> String
+</pre>
+
+有另一個使用 record 語法的好處。當我們為型別衍生（derive） `Show` 時，若是我們使用 record 語法來定義並實體化型別，它會以不同方式顯示它。假使我們有個表示一輛車的型別。我們要記錄製造它的公司、型號名稱與它的生產年份。看：
+
+<pre name="code" class="haskell:hs">
+data Car = Car String String Int deriving (Show)
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> Car "Ford" "Mustang" 1967
+Car "Ford" "Mustang" 1967
+</pre>
+
+若是我們使用 record 語法定義它，我們可以像這樣建一個新的 car：
+
+<pre name="code" class="haskell:ghci">
+data Car = Car {company :: String, model :: String, year :: Int} deriving (Show)
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> Car {company="Ford", model="Mustang", year=1967}
+Car {company = "Ford", model = "Mustang", year = 1967}
+</pre>
+
+當建立一個新的 car，我們不必以正確的順序放置欄位，只要我們將它們全部列出來。但若是我們不使用 record 語法，我們則必須照順序指定它們。
+
+在一個建構子有多個欄位，且哪個欄位是哪個並不明顯時使用 record 語法。若是我們藉由 `data Vector = Vector Int Int Int` 建立一個一個三維向量資料型別，欄位為向量的分量是十分顯而易見的。然而，在我們的 `Person` 與 `Car` 型別中的欄位就不是十分明顯，我們便大大受益於使用 record 語法。
+
 ## <a name="type-parameters">型別參數</a>
 
 ## <a name="derived-instances">衍生實體</a>
