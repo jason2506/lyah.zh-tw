@@ -4,6 +4,9 @@ title: 模組
 prev:
     url: higher-order-functions
     title: 高階函數
+next:
+    url: making-our-own-types-and-typeclasses
+    title: 建立我們自己的型別與 Typeclass
 ---
 
 ## <a name="loading-modules">載入模組</a>
