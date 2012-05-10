@@ -260,6 +260,138 @@ Car {company = "Ford", model = "Mustang", year = 1967}
 
 ## <a name="type-parameters">型別參數</a>
 
+一個值建構子可以接收一些值作為參數，然後產生一個新的值。舉例來說，`Car` 建構子接收三個值並產生一個 car 值。以類似的方式，*型別建構子（type constructor）*可以接收型別作為參數以產生新的型別。這起初聽起來可能有一點太深奧，但是它沒有這麼複雜。如果你熟悉 C++ 中的模版（template），你會看到一些相似之處。為了要搞清楚型別參數實際上如何運作，讓我們看看一個我們已經遇過的型別是如何實作的。
+
+<pre name="code" class="haskell:hs">
+data Maybe a = Nothing | Just a
+</pre>
+
+<img src="img/yeti.png" alt="yeti" style="float:left" />
+這裡的 `a` 為型別參數。且因為有個型別參數，所以我們將 `Maybe` 稱作一個型別建構子。根據我們想要在它並非為 `Nothing` 時持有的資料型別，這個型別建構子最終可以產生一個 `Maybe Int`、`Maybe Car`、`Maybe String`、等等型別。沒有值的型別可以為 `Maybe`，因為這本身並非一個型別，它是個型別建構子。為了令其作為一個可以具有值的真的型別，它必須填滿它所有的型別參數。
+
+所以若是我們將 `Char` 作為型別參數傳遞給 `Maybe`，我們就得到了一個 `Maybe Char` 型別。舉例來說，`Just 'a'` 的型別就為 `Maybe Char`。
+
+你也許不知道，但我們在使用 `Maybe` 之前使用過另一個具有一個型別參數的型別。這個型別即是 list 型別。儘管有些語法糖衣，list 型別實際上是取一個參數以產生一個具體的（concrete）型別。值可以為 `[Int]` 型別、`[Char]` 型別、`[[String]]` 型別，但你無法有個型別為 `[]` 的值。
+
+讓我們試試這個 `Maybe` 型別。
+
+<pre name="code" class="haskell:ghci">
+ghci> Just "Haha"
+Just "Haha"
+ghci> Just 84
+Just 84
+ghci> :t Just "Haha"
+Just "Haha" :: Maybe [Char]
+ghci> :t Just 84
+Just 84 :: (Num t) => Maybe t
+ghci> :t Nothing
+Nothing :: Maybe a
+ghci> Just 10 :: Maybe Double
+Just 10.0
+</pre>
+
+型別參數是很有用的，因為我們可以根據我們想要包含在我們資料型別中的型別種類來建立不同的型別。當我們執行 `:t Just "Haha"` 時，型別推導引擎發現它的型別為 `Maybe [Char]`，因為若是 `Just a` 中的 `a` 為一個字串，則 `Maybe a` 中的 `a` 也必須是個字串。
+
+注意到 `Nothing` 的型別為 `Maybe a`。它的型別是多型的。若是某些 function 要求一個 `Maybe Int` 作為參數，我們可以給它一個不包含任何值的 `Nothing` 而不會有問題。`Maybe a` 型別在必要時可以視為一個 `Maybe Int`，就像是 `5` 可以作為一個 `Int` 或是一個 `Double`。相似的，空 list 的型別為 `[a]`。一個空 list 可以視為一個任意型別的 list。這就是為什麼我們可以執行 `[1,2,3] ++ []` 與 `["ha","ha","ha"] ++ []`。
+
+使用型別參數是非常有益的，但只有在你合理使用它的時候。我們通常在無論我們的資料型別內部的值的型別為何都會運作時使用型別參數，像是我們的 `Maybe a` 型別。若是我們的型別像是某種盒子，使用型別參數就還不錯。我們可以將我們的 `Car` 資料型別從這樣：
+
+<pre name="code" class="haskell:hs">
+data Car = Car { company :: String
+               , model :: String
+               , year :: Int
+               } deriving (Show)
+</pre>
+
+改成這樣：
+
+<pre name="code" class="haskell:hs">
+data Car a b c = Car { company :: a
+                     , model :: b
+                     , year :: c
+                     } deriving (Show)
+</pre>
+
+但我們真的得到好處了嗎？答案是：或許沒有，因為我們最終定義的 function 只會運作在 `Car String String Int` 型別。舉例來說，給定我們的 `Car` 的第一個定義，我們可以建立一個以簡短文字顯示汽車屬性的 function。
+
+<pre name="code" class="haskell:hs">
+tellCar :: Car -> String
+tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> let stang = Car {company="Ford", model="Mustang", year=1967}
+ghci> tellCar stang
+"This Ford Mustang was made in 1967"
+</pre>
+
+一個可愛的小 function！型別宣告很可愛，且其運作良好。現在若是 `Car` 為 `Car a b c` 怎麼樣？
+
+<pre name="code" class="haskell:hs">
+tellCar :: (Show a) => Car String String a -> String
+tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y
+</pre>
+
+我們必須迫使這個 function 接收一個型別為 `(Show a) => Car String String a` 的 `Car` 型別。你可以看到型別簽名更加複雜，而我們實際上得到的唯一的好處是，我們可以使用任何為 `Show` typeclass 實體的型別作為 `a` 的型別。
+
+<pre name="code" class="haskell:ghci">
+ghci> tellCar (Car "Ford" "Mustang" 1967)
+"This Ford Mustang was made in 1967"
+ghci> tellCar (Car "Ford" "Mustang" "nineteen sixty seven")
+"This Ford Mustang was made in \"nineteen sixty seven\""
+ghci> :t Car "Ford" "Mustang" 1967
+Car "Ford" "Mustang" 1967 :: (Num t) => Car [Char] [Char] t
+ghci> :t Car "Ford" "Mustang" "nineteen sixty seven"
+Car "Ford" "Mustang" "nineteen sixty seven" :: Car [Char] [Char] [Char]
+</pre>
+
+<img src="img/meekrat.png" alt="meekrat" style="float:right" />
+在現實生活中，我們大多數時候都是使用 `Car String String Int`，所以看起來並不是很值得參數化（parameterize）`Car` 型別。我們通常在包含於資料型別內部的型別的各個值建構子，對於型別運作並不是非常重要的時候使用型別參數。某個東西的 list 就是一串東西的列表，不管這個東西的型別為何，它都仍然可以運作。若是我們想要加總一個數字 list，我們可以之後在加總 function 中指定我們明確地想要一個數字 list。`Maybe` 亦同。`Maybe` 表示一個「沒有值」或是「有某一個值」的選項。無論這某一個值的型別為何。
+
+另一個我們已經遇過的參數化型別例子是 `Data.Map` 中的 `Map k v`。`k` 為在一個 map 中的 kye 的型別，而 `v` 為 value 的型別。這是型別參數非常有用的一個很好的例子。map 的參數化使我們能夠從任意型別映射到其它任意型別，只要 key 的型別為 `Ord` typeclass 的一員。
+若是我們要定義一個 map 型別，我們可以在 <i>data</i> 宣告中可以加上一個 typeclass 限制：
+
+<pre name="code" class="haskell:hs">
+data (Ord k) => Map k v = ...
+</pre>
+
+然而，*絕對不要在 <i>data</i> 宣告中加上 typeclass 限制*是個在 Haskell 中的非常奇怪的約定。為什麼？嗯，因為我們並不會得到很多好處，但我們最終會寫下更多類別限制，即使是在我們不需要它們的時候。無論我們在 `Map k v` 的 <i>data</i> 宣告中擺或不擺 `Ord k` 限制，我們都必須將這個限制擺進假定 map 中的 key 可以被排序的 function 中。但若是我們不將這個限制擺進 <i>data</i> 宣告中，我們就不必將 `(Ord k) =>` 擺進不在乎 key 是否可以被排序的 function 的型別宣告中。一個這種 function 的範例是 `toList`，它取一個 map 並將它轉成一個關聯列表。它的型別簽名為 `toList :: Map k a -> [(k, a)]`。若是 `Map k v` 在它的 <i>data</i> 宣告中有一個型別限制，`toList` 的型別就必須為 `toList :: (Ord k) => Map k a -> [(k, a)]`，即使這個 function 並不會對 key 做任何比較。
+
+所以別將型別限制擺進 <i>data</i> 宣告中──即使它看起來很合理，因為無論哪種方式你都必須將它擺進 function 的型別宣告中。
+
+讓我們實作一個三維向量型別，並為它加上一些操作。我們要使用一個參數化型別，因為即使它通常會包含數字型別，
+它仍然會支援多個不同的數字類型。
+
+<pre name="code" class="haskell:hs">
+data Vector a = Vector a a a deriving (Show)
+
+vplus :: (Num t) => Vector t -> Vector t -> Vector t
+(Vector i j k) `vplus` (Vector l m n) = Vector (i+l) (j+m) (k+n)
+
+vectMult :: (Num t) => Vector t -> t -> Vector t
+(Vector i j k) `vectMult` m = Vector (i*m) (j*m) (k*m)
+
+scalarMult :: (Num t) => Vector t -> Vector t -> t
+(Vector i j k) `scalarMult` (Vector l m n) = i*l + j*m + k*n
+</pre>
+
+`vplus` 是用來將兩個向量加在一起。兩個向量藉由加總它們對應的分量來相加。`scalarMult` 是用來求兩個向量的內積，`vectMult` 是用來將一個向量乘上一個純量。這些 function 可以操作 `Vector Int`、`Vector Integer`、`Vector Float`、等等，只是 `Vector a` 的 `a` 要為 `Num` typeclass。同樣的，若是你為這些 function 檢驗型別宣告，你就會看到它們只可以操作相同型別的向量，而涉及的數字也必須是包含在向量中的型別。注意到我們沒有將一個 `Num` 類別限制擺進 <i>data</i> 宣告中，因為我們無論如何都必須在 function 中重複它。
+
+再一次，區分型別建構子與值建構子是非常重要的。宣告一個資料型別時，在 `=` 之前的部份為型別建構子，而在它之後的建構子（或許會以 `|` 分隔）為值建構子。為一個 function 給定一個 `Vector t t t -> Vector t t t -> t` 型別是不對的，因為我們必須將型別擺進型別宣告中，且 vector *型別*建構子只取一個參數，而值建構子則是取三個。讓我們試試我們的 vector：
+
+<pre name="code" class="haskell:ghci">
+ghci> Vector 3 5 8 `vplus` Vector 9 2 8
+Vector 12 7 16
+ghci> Vector 3 5 8 `vplus` Vector 9 2 8 `vplus` Vector 0 2 3
+Vector 12 9 19
+ghci> Vector 3 9 7 `vectMult` 10
+Vector 30 90 70
+ghci> Vector 4 9 5 `scalarMult` Vector 9.0 2.0 4.0
+74.0
+ghci> Vector 2 9 3 `vectMult` (Vector 4 9 5 `scalarMult` Vector 9 2 4)
+Vector 148 666 222
+</pre>
+
 ## <a name="derived-instances">衍生實體</a>
 
 ## <a name="type-synonyms">型別同義詞</a>
