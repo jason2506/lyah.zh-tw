@@ -394,6 +394,185 @@ Vector 148 666 222
 
 ## <a name="derived-instances">衍生實體</a>
 
+<img src="img/gob.png" alt="gob" style="float:right" />
+在 [Typeclasses 101](types-and-typeclasses#typeclasses-101) 這一節，我們解釋過 typeclass 的基礎。我們解釋過一個 typeclass 是一種定義某種行為的介面。若是一個型別支援這些動作，它就可以作為一個 typeclass 的*實體（instance）*。例如：`Int` 型別為 `Eq` typeclass 的實體，因為 `Eq` typeclass 定義了值可以被比較相等性的行為。且因為整數可以被比較相等性，所以 `Int` 即為 `Eq` typeclass 的一員。實際用途在於作為 `Eq` 介面的 function，叫做 `==` 與 `/=`。如果一個型別為 `Eq` typeclass 的一員，我們就能夠以這種型別的值使用 `==` function。這就是為什麼像是 `4 == 4` 與 `"foo" /= "bar"` 這種 expression 要做型別檢查。
+
+我們也提過它通常會跟像是 Java、Python、C++ 以及類似語言中的類別搞混，這使得不少人感到困惑。在這些語言中，類別是一張藍圖，接著我們從中建立包含狀態（state）且能夠做某些行為的物件。typeclass 更像是介面。我們不會從 typeclass 建立資料。取而代之的，我們首先建立我們的資料型別，然後我們思考它可以作為什麼。如果它可以作為某個可以被比較相等性的值，我們就令它為 `Eq` typeclass 的實體。如果它可以作為某個可以被排序的值，我們就令它為 `Ord` typeclass 的實體。
+
+在下一節，我們將看看我們可以如何藉由實作由 typeclass 定義的 function，手動地建立我們的 typeclass 型別實體。但現在，讓我們看看 Haskell 可以如何自動地令我們自己的型別為下列任何 typeclass 的實體：`Eq`、`Ord`、`Enum`、`Bounded`、`Show`、`Read`。若是我們在建立我們的資料型別時使用 <i>deriving</i> 關鍵字，Haskell 就能夠以這些 context 衍生我們型別的行為。
+
+考慮到這個資料型別：
+
+<pre name="code" class="haskell:hs">
+data Person = Person { firstName :: String
+                     , lastName :: String
+                     , age :: Int
+                     }
+</pre>
+
+它描述了一個人。讓我們假設沒有兩個人有相同名字、姓氏與年齡的組合。現在，若是我們有兩個人的紀錄，看看它們是否表示同一個人是否合理？當然囉。我們可以試著比較兩者的相等性，再看看它們是否相等。這就是為什麼這個型別為 `Eq` typeclass 一員是合理的。我們要衍生這個實體。
+
+<pre name="code" class="haskell:ghci">
+data Person = Person { firstName :: String
+                     , lastName :: String
+                     , age :: Int
+                     } deriving (Eq)
+</pre>
+
+當我們為一個型別衍生 `Eq` 實體，然後嘗試以 `==` 或是 `/=` 比較兩個此型別的值，Haskell 將會看看值建構子是否匹配（雖然這裡只有一個值建構子），然後它會藉由 `==` 測試每一對欄位，檢查所有包含在內部的資料是否匹配。只有一個問題，所有欄位的型別也必須為 `Eq` typeclass 的一員。但由於 `String` 與 `Int` 皆是，所以是沒問題的。讓我們測試我們的 `Eq` 實體。
+
+<pre name="code" class="haskell:ghci">
+ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}
+ghci> let adRock = Person {firstName = "Adam", lastName = "Horovitz", age = 41}
+ghci> let mca = Person {firstName = "Adam", lastName = "Yauch", age = 44}
+ghci> mca == adRock
+False
+ghci> mikeD == adRock
+False
+ghci> mikeD == mikeD
+True
+ghci> mikeD == Person {firstName = "Michael", lastName = "Diamond", age = 43}
+True
+</pre>
+
+當然，由於 `Person` 目前屬於 `Eq`，所以我們可以將它用作所有在其型別簽名中有個 `Eq a` 類別限制的 function 中的 `a`，像是 `elem`。
+
+<pre name="code" class="haskell:ghci">
+ghci> let beastieBoys = [mca, adRock, mikeD]
+ghci> mikeD `elem` beastieBoys
+True
+</pre>
+
+`Show` 與 `Read` typeclass 分別是可以被轉成字串或是由字串轉成的值。如同 `Eq`，若是我們想要令我們的型別為 `Show` 與 `Read` typeclass 的實體，且型別的建構子擁有欄位，它們的型別也必須為 `Show` 或是 `Read` 的一員。讓我們令我們的 `Person` 資料型別也為 `Show` 與 `Read` 的一員。
+
+<pre name="code" class="haskell:hs">
+data Person = Person { firstName :: String
+                     , lastName :: String
+                     , age :: Int
+                     } deriving (Eq, Show, Read)
+</pre>
+
+現在我們可以在終端機印出一個 person。
+
+<pre name="code" class="haskell:ghci">
+ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}
+ghci> mikeD
+Person {firstName = "Michael", lastName = "Diamond", age = 43}
+ghci> "mikeD is: " ++ show mikeD
+"mikeD is: Person {firstName = \"Michael\", lastName = \"Diamond\", age = 43}"
+</pre>
+
+如果我們在令 `Person` 資料型別為 `Show` 的一員前嘗試在終端機印出 person，Haskell 將會向我們抱怨、聲稱它不知道該如何以一個字串表達一個 person。但現在我們已經為它衍生了一個 `Show` 實體，它就知道了。
+
+`Read` 幾乎是與 `Show` 相反的 typeclass。`Show` 是為了將我們的型別的值轉成字串，`Read` 則是為了將字串轉成我們的型別的值。記住，當我們使用 `read` function 時，我們必須使用一個顯式的型別註釋（type annotation）以告訴 Haskell 我們想要作為結果得到的是哪個型別。若是你不明確表示我們想要作為結果的型別，Haskell 就不知道我們想要的是哪個型別。
+
+<pre name="code" class="haskell:ghci">
+ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" :: Person
+Person {firstName = "Michael", lastName = "Diamond", age = 43}
+</pre>
+
+如果我們在之後使用我們的 `read` 結果，Haskell 就能夠推論它應該將其讀作一個 person，我們就不必使用型別註釋了。
+
+<pre name="code" class="haskell:ghci">
+ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" == mikeD
+True
+</pre>
+
+我們也可以 read 參數化型別，但我們必須填入型別參數。所以我們無法執行 `read "Just 't'" :: Maybe a`，但我們可以執行 `read "Just 't'" :: Maybe Char`。
+
+我們可以為 `Ord` typeclass 衍生實體──其代表擁有可以被排序的值的型別。如果我們比較兩個相同型別、但使用不同建構子建立的值，以先定義的建構子建立的值會被視為比較小的。舉例來說，考慮 `Bool` 型別，它可以擁有 `False` 或是 `True` 任一個值。為了看看它在被比較時的行為，我們可以想成它像這樣實作：
+
+<pre name="code" class="haskell:hs">
+data Bool = False | True deriving (Ord)
+</pre>
+
+因為 `False` 值建構子先被指定，而 `True` 值建構子在其之後被指定，所以我們可以將 `True` 視為比 `False` 還大。
+
+<pre name="code" class="haskell:ghci">
+ghci> True `compare` False
+GT
+ghci> True > False
+True
+ghci> True < False
+False
+</pre>
+
+在 `Maybe a` 資料型別中，`Nothing` 值建構子在 `Just` 值建構子之前被指定，所以一個 `Nothing` 的值總是小於 `Just something` 的值，即使這個 something 為非常小的值。但如果我們比較兩個 `Just` 值，這時它就比較在它們之中的值。
+
+<pre name="code" class="haskell:ghci">
+ghci> Nothing < Just 100
+True
+ghci> Nothing > Just (-49999)
+False
+ghci> Just 3 `compare` Just 2
+GT
+ghci> Just 100 > Just 50
+True
+</pre>
+
+但我們無法做像是 `Just (*3) > Just (*2)` 這樣的事，因為 `(*3)` 與 `(*2)` 為 function，它們都不是 `Ord` 的實體。
+
+我們可以輕易地使用代數資料型別來建立列舉，而 `Enum` 與 `Bounded` typeclass 則幫助我們做到。考慮下列資料型別：
+
+<pre name="code" class="haskell:hs">
+data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday
+</pre>
+
+因為所有的值建構子都是 nullary 的（不接收參數──即欄位），所以我們可以讓它為 `Enum` typeclass 的一員。`Enum` typeclass 代表擁有前置子與後繼子的型別。我們也可以令它為 `Bounded` typeclass 的一員──其代表擁有一個最小可能值與最大可能值的型別。既然如此，讓我們同時令它為一個所有其它可衍生的 typeclass 實體，並看看我們能夠用它來做什麼。
+
+<pre name="code" class="haskell:hs">
+data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday
+           deriving (Eq, Ord, Show, Read, Bounded, Enum)
+</pre>
+
+因為它是 `Show` 與 `Read` typeclass 的一員，所以我們可以將這個型別的值轉換成字串，以及從字串轉換成這個型別的值。
+
+<pre name="code" class="haskell:ghci">
+ghci> Wednesday
+Wednesday
+ghci> show Wednesday
+"Wednesday"
+ghci> read "Saturday" :: Day
+Saturday
+</pre>
+
+因為它是 `Eq` 與 `Ord` typeclass 的一員，所以我們可以比較 day 的大小或是相等性。
+
+<pre name="code" class="haskell:ghci">
+ghci> Saturday == Sunday
+False
+ghci> Saturday == Saturday
+True
+ghci> Saturday > Friday
+True
+ghci> Monday `compare` Wednesday
+LT
+</pre>
+
+它也是 `Bounded` 的一員，所以我們可以取得最小與最大的 day。
+
+<pre name="code" class="haskell:ghci">
+ghci> minBound :: Day
+Monday
+ghci> maxBound :: Day
+Sunday
+</pre>
+
+它也是 `Enum` 的實體。我們可以取得 day 的前置子與後繼子，且我們可以用它建立 list range！
+
+<pre name="code" class="haskell:ghci">
+ghci> succ Monday
+Tuesday
+ghci> pred Saturday
+Friday
+ghci> [Thursday .. Sunday]
+[Thursday,Friday,Saturday,Sunday]
+ghci> [minBound .. maxBound] :: [Day]
+[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday]
+</pre>
+
+這個超級棒的。
+
 ## <a name="type-synonyms">型別同義詞</a>
 
 ## <a name="recursive-data-structures">遞迴資料結構</a>
