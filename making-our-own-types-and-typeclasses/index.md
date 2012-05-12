@@ -575,6 +575,165 @@ ghci> [minBound .. maxBound] :: [Day]
 
 ## <a name="type-synonyms">型別同義詞</a>
 
+先前，我們在撰寫型別時提過 `[Char]` 與 `String` 型別是相等且可以互換的。這是以*型別同義詞（type synonyms）*實作的。型別同義詞本身不會真的做什麼事，它們只是給予某些型別不同的名字，以讓它對於閱讀我們程式與文件的某人來說更加有意義。以下是標準函式庫如何將 `String` 定義為 `[Char]` 同義詞的方式。
+
+<pre name="code" class="haskell:hs">
+type String = [Char]
+</pre>
+
+<img src="img/chicken.png" alt="chicken" style="float:left" />
+我們引入了 <i>type</i> 關鍵字。這個關鍵字可能會誤導某些人，因為我們實際上不會建立任何新的型別（我們以 <i>data</i> 關鍵字來做到），我們僅為一個已經存在的型別建立一個同義詞。
+
+如果我們建立一個將字串轉成大寫的 function，並稱它為 `toUpperString` 或什麼的，我們可以給它一個 `toUpperString :: [Char] -> [Char]` 或是 `toUpperString :: String -> String` 型別宣告。這兩者本質上是相同的，只是後者更好讀。
+
+當我們處理 `Data.Map` 模組時，我們在將它轉成一個 map 之前，首先將 phonebook 以一個關連列表表示。如同我們已經發現的，一個關連列表為一個 key-value pair 的 list。讓我們看看我們的 phonebook。
+
+<pre name="code" class="haskell:hs">
+phoneBook :: [(String,String)]
+phoneBook =
+    [("betty","555-2938")
+    ,("bonnie","452-2928")
+    ,("patsy","493-2928")
+    ,("lucille","205-2928")
+    ,("wendy","939-8282")
+    ,("penny","853-2492")
+    ]
+</pre>
+
+我們看到 `phoneBook` 的型別為 `[(String,String)]`。這告訴我們它是個從字串映射到字串的關連列表，但僅此而已。讓我們建立一個型別同義詞，以在型別宣告中傳達更多的訊息。
+
+<pre name="code" class="haskell:hs">
+type PhoneBook = [(String,String)]
+</pre>
+
+現在我們 phonebook 的型別宣告可以是 `phoneBook :: PhoneBook`。讓我們也為 `String` 建立一個型別同義詞。
+
+<pre name="code" class="haskell:hs">
+type PhoneNumber = String
+type Name = String
+type PhoneBook = [(Name,PhoneNumber)]
+</pre>
+
+Haskell 程式設計師會在他們想要傳達更多關於在他們 function 中的字串應該被用作什麼、以及它們代表什麼的資訊時，給予 `String` 型別同義詞。
+
+所以現在，當我們實作一個接收一個名字與一個數字、並看看這個名字與號碼組合是否在我們的 phonebook 中的 function，我們可以給它一個非常漂亮且具有描述性的型別宣告。
+
+<pre name="code" class="haskell:hs">
+inPhoneBook :: Name -> PhoneNumber -> PhoneBook -> Bool
+inPhoneBook name pnumber pbook = (name,pnumber) `elem` pbook
+</pre>
+
+若是我們決定不要使用型別同義詞，我們的 function 型別將會是 `String -> String -> [(String,String)] -> Bool`。在這種情況中，利用型別同義詞的型別宣告更加容易理解。我們引入型別同義詞以描述在我們 function 中的某個已有型別表示什麼，或是在某值有一個重複多次又有點長的型別（像是 `[(String,String)]`）、但某值表達在我們 function 中的前後文更加具體的時候。
+
+型別同義詞也可以被參數化。如果我們想要一個表達關連列表的型別，但仍然想讓它一般化以令它得以使用任何型別作為 key 與 value，我們可以這麼做：
+
+<pre name="code" class="haskell:hs">
+type AssocList k v = [(k,v)]
+</pre>
+
+現在，一個在關連列表中以 key 取得 value 的 function 型別可以是 `(Eq k) => k -> AssocList k v -> Maybe v`。`AssocList` 是一個接收兩個型別並產生一個具體型別的型別建構子──舉例來說，像是 `AssocList Int String`。
+
+<p class="hint">
+<em>Fonzie 說：</em>Aaay！當我談論具體型別時，我指的像是完全套用型別，如 <code>Map Int String</code>；或是我們在處理其中一個它們的多型 function，如<code>[a]</code> 或是 <code>(Ord a) => Maybe a</code> 之類的。就像是，有時候我跟哥兒們說 <code>Maybe</code> 是個型別，但我們指的不是字面上的意思，因為每個傻瓜都知道 <code>Maybe</code> 是個型別建構子嘛。當我應用一個額外的型別到 <code>Maybe</code> 時，像是 <code>Maybe String</code>，這時我就有個具體型別。你知道的，值的型別只可以是具體型別！總而言之，及時行樂、小心至上（live fast, love hard and don't let anybody else use your comb）！<span class="note">〔譯註：Fonzie 為 1980 年代美國喜劇《Happy Days》中的虛構人物。開頭的 Aaay 與文末結論皆為他在劇中比較有名的台詞。〕</span>
+</p>
+
+就像是我們可以部分應用 function 以得到新的 function，我們也可以部分應用型別參數以從中得到新的型別建構子。就像是我們以很少的參數呼叫 function 以得到一個新的 function，我們也能夠以很少的參數指定一個型別建構子並取得一個部分應用的型別建構子。若是我們想要一個表達一個從整數映射到某個型別的 map（來自於 `Data.Map`），我們可以這樣做：
+
+<pre name="code" class="haskell:hs">
+type IntMap v = Map Int v
+</pre>
+
+或者，我們可以像這樣做：
+
+<pre name="code" class="haskell:hs">
+type IntMap = Map Int
+</pre>
+
+任何一種方式，`IntMap` 型別建構子都取一個參數，而這就是整數將會映射到的型別。
+
+<p class="hint">
+<em>喔耶。</em>如果你要試著實作它，你將可能要進行 <code>Data.Map</code> 的限制引入。當你進行限制引入時，型別建構子也必須以模組名稱開頭。所以你要寫成 <code>type IntMap = Map.Map Int</code>。
+</p>
+
+確定你真的理解型別建構子與值建構子之間的分別。僅因為我們建立一個叫做 `IntMap` 或是 `AssocList` 的型別同義詞，不代表我們可以做像是 `AssocList [(1,2),(4,5),(7,9)]` 的事。它所代表的是我們可以使用不同名字參照到它的型別。
+我們可以做 `[(1,2),(3,5),(8,9)] :: AssocList Int Int`，這將會令內部的數字型別假定為 `Int`，但我們仍然可以使用這個 list 作為任何在內部擁有一對整數的一般 list。型別同義詞（與一般化型別）只可以被使用在 Haskell 的型別部分。無論是我們在定義新型別（對 <i>data</i> 與 <i>type</i> 宣告都是）的任何時候，或是在我們位在一個 `::` 之後的時候，我們都在 Haskell 的型別部分中。`::` 是在型別宣告或是在型別註釋中。
+
+另一個接收兩個型別做為其參數的酷資料型別是 `Either a b` 型別。它大概是這樣定義的：
+
+<pre name="code" class="haskell:hs">
+data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)
+</pre>
+
+它有兩個值建構子。若是 `Left` 被使用，則其內容型別為 `a`；若是 `Right` 被使用，則其內容型別為 `b`。所以我們可以使用這個型別來封裝一個型別的值或是另一個型別的值，然後當我們取得一個型別為 `Either a b` 的值時，我們通常會對 `Left` 與 `Right` 進行模式匹配，我們會根據它是哪一種來做出不同的行為。
+
+<pre name="code" class="haskell:ghci">
+ghci> Right 20
+Right 20
+ghci> Left "w00t"
+Left "w00t"
+ghci> :t Right 'a'
+Right 'a' :: Either a Char
+ghci> :t Left True
+Left True :: Either Bool b
+</pre>
+
+到目前為止，我們看到 `Maybe a` 是最常被用來表達可以是失敗或成功的計算結果。但有時候，`Maybe a` 並不是足夠好的，因為 `Nothing` 沒有真的傳遞許多除了「有什麼失敗了」以外的資訊。這對於只能有一種失敗方式、或是我們對如何與為什麼失敗不感興趣的 function 來說是很好的。`Data.Map` 只有在我們檢索的 key 不在 map 中的時候會檢索失敗，所以我們確實地知道發生了什麼。然而，當我們對某個 function 如何或是為什麼失敗感興趣時，我們通常會使用型別為 `Either a b` 的結果，其中 `a` 為某種可以告訴我們關於可能的失敗資訊的型別、而 `b` 則是成功計算的型別。於是，錯誤使用 `Left` 值建構子，而結果使用 `Right`。
+
+一個例子：一所高中擁有置物櫃以讓學生有地方放它們的 Guns'n'Roses<span class="note">〔譯註：美國 1980-1990 年代的搖滾樂團〕</span>海報。每個置物櫃都有一個密碼組合。當一個學生想要一個新的置物櫃時，他要告訴置物櫃管理員他想要的置物櫃號碼，管理員就會給予他密碼。然而，若是某人已經使用了這個置物櫃，管理員就不能告訴他置物櫃的密碼，而他必須挑選不同的置物櫃。我們要使用一個 `Data.Map` 的 map 來表示置物櫃。它將會從置物櫃號碼映射到一對置物櫃是否被使用與置物櫃的密碼。
+
+<pre name="code" class="haskell:hs">
+import qualified Data.Map as Map
+
+data LockerState = Taken | Free deriving (Show, Eq)
+
+type Code = String
+
+type LockerMap = Map.Map Int (LockerState, Code)
+</pre>
+
+簡單的東西。我們引入一個新的資料型別以表示一個置物櫃是否被佔用，我們為置物櫃密碼建立一個型別同義詞。我們也為從整數映射到一對置物櫃狀態與密碼的型別建立一個型別同義詞。而現在，我們要建立一個在置物櫃 map 搜尋密碼的 function。我們要使用 `Either String Code` 來表達我們的結果，因為我們的檢索可以有兩種失敗方式──置物櫃被佔用，在這種情況我們無法告知密碼；或是置物櫃號碼可能根本不存在。若是檢索失敗，我們就要使用一個 `String` 來告知發生了什麼。
+
+<pre name="code" class="haskell:hs">
+lockerLookup :: Int -> LockerMap -> Either String Code
+lockerLookup lockerNumber map =
+    case Map.lookup lockerNumber map of
+        Nothing -> Left $ "Locker number " ++ show lockerNumber ++ " doesn't exist!"
+        Just (state, code) -> if state /= Taken
+                                then Right code
+                                else Left $ "Locker " ++ show lockerNumber ++ " is already taken!"
+</pre>
+
+我們在 map 進行一個普通的檢索。若是我們得到一個 `Nothing`，我們就回傳一個型別為 `Left String` 的值，表明置物櫃根本不存在。若是我們找到它，我們就做一個額外的檢查以看看置物櫃是否被佔用。如果是，就回傳一個 `Left` 表明它已經被佔用。若否，就傳回一個型別為 `Right Code` 的值，其中我們給予這個學生置物櫃的正確密碼。它實際上是一個 `Right String`，但我們引入這個型別同義詞以將一些額外的說明引入到型別宣告中。以下是個範例 map：
+
+<pre name="code" class="haskell:hs">
+lockers :: LockerMap
+lockers = Map.fromList
+    [(100,(Taken,"ZD39I"))
+    ,(101,(Free,"JAH3I"))
+    ,(103,(Free,"IQSA9"))
+    ,(105,(Free,"QOTSA"))
+    ,(109,(Taken,"893JJ"))
+    ,(110,(Taken,"99292"))
+    ]
+</pre>
+
+現在讓我們試著檢索一些置物櫃密碼。
+
+<pre name="code" class="haskell:ghci">
+ghci> lockerLookup 101 lockers
+Right "JAH3I"
+ghci> lockerLookup 100 lockers
+Left "Locker 100 is already taken!"
+ghci> lockerLookup 102 lockers
+Left "Locker number 102 doesn't exist!"
+ghci> lockerLookup 110 lockers
+Left "Locker 110 is already taken!"
+ghci> lockerLookup 105 lockers
+Right "QOTSA"
+</pre>
+
+我們可以使用一個 `Maybe a` 來表達結果，但這時我們將不會知道我們為什麼無法取得密碼。但現在，我們在我們的結果型別中有了關於失敗的資訊。
+
 ## <a name="recursive-data-structures">遞迴資料結構</a>
 
 ## <a name="typeclasses-102">Typeclasses 102</a>
