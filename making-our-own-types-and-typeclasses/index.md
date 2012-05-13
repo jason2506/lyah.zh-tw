@@ -736,6 +736,163 @@ Right "QOTSA"
 
 ## <a name="recursive-data-structures">遞迴資料結構</a>
 
+<img src="img/thefonz.png" alt="the fonz" style="float:right" />
+如同我們見過的，一個在代數資料型別中的建構子可以有多個（或是根本沒有）欄位，且每個欄位都必須為某個實體型別。考慮到這一點，我們可以建立其建構子擁有相同型別欄位的型別！藉此，我們可以建立遞迴資料結構，其中某個型別的值包含這個型別的值，接著這個值也包含更多相同型別的值等等。
+
+想想這個 list：`[5]`。這僅是 `5:[]` 的語法糖衣。在 `:` 左邊為一個值，而在右邊為一個 list。在這個例子中，它是個空 list。現在 `[4,5]` 這個 list 如何呢？嗯，它被去糖（desugar）為 `4:(5:[])`。看看第一個 `:`，我們看到在它的左邊也有一個元素、在它的右邊也有一個 list（`5:[]`）。同樣適用於像是 `3:(4:(5:6:[]))` 這樣的 list，它可以被寫成像是這樣、像是 `3:4:5:6:[]`（因為 `:` 是右結合）或是 `[3,4,5,6]`。
+
+我們可以說，一個 list 可以為一個空 list，或者它可以為一個元素以 `:` 結合另一個 list（它可以是或不是空 list）。
+
+接著讓我們使用代數資料型別來實作我們自己的 list！
+
+<pre name="code" class="haskell:hs">
+data List a = Empty | Cons a (List a) deriving (Show, Read, Eq, Ord)
+</pre>
+
+這讀起來就像是來自於前面段落之一的我們的 list 定義。它是一個空 list 或是一個帶著某值的 head 與一個 list 的組合。若是你對此感到困惑，你也許會發現它以 record 語法比較容易理解。
+
+<pre name="code" class="haskell:hs">
+data List a = Empty | Cons { listHead :: a, listTail :: List a} deriving (Show, Read, Eq, Ord)
+</pre>
+
+你也許也會對這裡的 `Cons` 建構子感到困惑。cons 為 `:` 的另一個說法。你看到在 list 中的 `:` 實際上是一個接收一個值與另一個 list、並回傳一個 list 的建構子。我們已經可以使用我們的新 list 型別了！換句話說，它有兩個欄位。一個欄位的型別為 `a`，而另一個型別為 `[a]`。
+
+<pre name="code" class="haskell:ghci">
+ghci> Empty
+Empty
+ghci> 5 `Cons` Empty
+Cons 5 Empty
+ghci> 4 `Cons` (5 `Cons` Empty)
+Cons 4 (Cons 5 Empty)
+ghci> 3 `Cons` (4 `Cons` (5 `Cons` Empty))
+Cons 3 (Cons 4 (Cons 5 Empty))
+</pre>
+
+我們以中綴的方式呼叫我們的 `Cons` 建構子，所以你可以看到它就像是 `:`。`Empty` 就像是 `[]`，而 ``4 `Cons` (5 `Cons` Empty)`` 就像是 `4:(5:[])`.
+
+我們可以讓我們的 function 僅以特殊字元組成，將它定義成自動中綴呼叫。由於建構子只是回傳一個資料型別的 function，所以我們也可以對它做一樣的事。所以看看這個：
+
+<pre name="code" class="haskell:hs">
+infixr 5 :-:
+data List a = Empty | a :-: (List a) deriving (Show, Read, Eq, Ord)
+</pre>
+
+首先，我們注意到一個新的語法結構──fixity 宣告。當我們以運算子定義 function 時，我們可以使用這個以給予它一個 fixity（但我們不必如此）。一個 fixity 描述了運算子綁定有多緊密、以及它是否為左結合或右結合。舉例來說，`*` 的 fixity 為 `infixl 7 *`，而 `+` 的 fixity 為 `infixl 6`。這意味著它們都是左結合（`4 * 3 * 2` 為 `(4 * 3) * 2`），但 `*` 綁定緊密於 `+`，因為它有比較高的 fixity，所以 `5 * 4 + 3` 為 `(5 * 4) + 3`。
+
+於是，我們就可以寫成 `a :-: (List a)` 以取代 `Cons a (List a)`。現在，我們能夠以我們的 list 型別像這樣寫下 list：
+
+<pre name="code" class="haskell:ghci">
+ghci> 3 :-: 4 :-: 5 :-: Empty
+(:-:) 3 ((:-:) 4 ((:-:) 5 Empty))
+ghci> let a = 3 :-: 4 :-: 5 :-: Empty
+ghci> 100 :-: a
+(:-:) 100 ((:-:) 3 ((:-:) 4 ((:-:) 5 Empty)))
+</pre>
+
+在為我們的型別衍生 `Show` 的時候，Haskell 仍然會將建構子當作前綴 function 來顯示它，於是就有個括號包住運算子（記住，`4 + 3` 為 `(+) 4 3`）。
+
+讓我們建立一個將兩個我們的 list 加起來的 function。這即是針對一般 list 的 `++` 是如何被定義的：
+
+<pre name="code" class="haskell:hs">
+infixr 5  ++
+(++) :: [a] -> [a] -> [a]
+[]     ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+</pre>
+
+所以我們要把它偷來給我們自己的 list 用。我們要把 function 命名為 `.++`。
+
+<pre name="code" class="haskell:hs">
+infixr 5  .++
+(.++) :: List a -> List a -> List a
+Empty .++ ys = ys
+(x :-: xs) .++ ys = x :-: (xs .++ ys)
+</pre>
+
+讓我們看看它是否正常運作...
+
+<pre name="code" class="haskell:ghci">
+ghci> let a = 3 :-: 4 :-: 5 :-: Empty
+ghci> let b = 6 :-: 7 :-: Empty
+ghci> a .++ b
+(:-:) 3 ((:-:) 4 ((:-:) 5 ((:-:) 6 ((:-:) 7 Empty))))
+</pre>
+
+好。很不錯。如果我們想要，我們可以為我們自己的 list 型別實作所有操作在 list 上的操作。
+
+注意到我們如何在 `(x :-: xs)` 上進行模式匹配。這可以正常運作，因為模式匹配實際上是匹配建構子。我們可以在 `:-:` 上做匹配，因為它是個我們自己的 list 型別的建構子；且我們也可以在 `:` 上做匹配，因為它是個內建 list 型別的建構子。同樣適用於 `[]`。因為模式匹配（只能）運作在建構子上，所以我們可以匹配像這樣的東西、一般的前綴建構子或像是 `8` 或 `'a'` 這樣的東西──它們基本上分別是數字與字元型別的建構子。
+
+<img src="img/binarytree.png" alt="binary search tree" style="float:left" />
+現在，我們要實作一棵*二元搜尋樹（binary search tree）*。
+如果你不熟悉像是 C 這種語言的二元搜尋樹，這就是：一個元素指到兩個元素，一個在它左邊，一個在它右邊。在左邊的元素比較小，在右邊的元素比較大。每個這些元素也可以指到兩個元素（或是一個、或是沒有）。實際上，每個元素擁有至多兩個子樹。關於二元搜尋樹的一個很酷的事情是，我們知道所有在──假定為 5──的左子樹的元素都是比 5 小的。在它右子樹的元素都是比較大的。所以若是我們需要找找 8 是否在我們的樹裡頭，我們就從 5 開始，然後因為 8 大於 5，我們就往右走。我們現在到了 7，且因為 8 比 7 大，所以我們再次往右走。我們以三步找到了我們的元素！現在若是這是個一般的 list（或是一棵樹，但是非常不平衡〈unbalanced〉），它就會耗費我們七步而不是三步來看看 8 是否在這裡。
+
+`Data.Set` 與 `Data.Map` 的 set 與 map 都以樹來實作，只是它們使用的不是一般的二元搜尋樹，而是平衡的（balanced）二元搜尋樹──它總是平衡的。但現在，我們只要實作一般的二元搜尋樹。
+
+這裡我們要假定：一棵樹要不是一棵空的樹，就是一個包含某值與兩棵樹的元素。聽起來與代數資料型別十分契合！
+
+<pre name="code" class="haskell:hs">
+data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)
+</pre>
+
+好的，好，非常好。並非手動地建立一棵樹，我們要建立一個取一棵樹與一個元素、並插入這個元素的 function。我們藉由比較我們要插入的值與根節點（root note）的大小來做到，然後若是它比較小，我們就往左走；若是它比較大，我們就向右走。我們對每個子樹節點做一樣的事情，直到我們到達一棵空的樹。一旦我們到達一棵空的樹，我們將以這個值插入一個節點取代這棵空樹。
+
+在像是 C 這種語言中，我們藉由修改指標（pointer）與樹內部的值來做到這件事。在 Haskell 中，我們無法真的修改我們的樹，所以我們必須在每次我們決定往左或往右走的時候建立一棵新的子樹，到最後這個插入 function 會回傳一棵完全嶄新的樹，因為 Haskell 並非真的擁有指標的概念，只有值而已。於是，我們的插入 function 型別會像是 `a -> Tree a - > Tree a` 這樣。它取一個元素與一棵樹，並傳回一棵內部擁有這個元素的新樹。這聽起來似乎很沒效率，但惰性處理了這個問題。
+
+所以，這裡有兩個 function。一個是建立一棵獨體（singleton）樹（只有一個節點的樹）的 function，一個是將一個元素插入到一棵樹中的 function。
+
+<pre name="code" class="haskell:hs">
+singleton :: a -> Tree a
+singleton x = Node x EmptyTree EmptyTree
+
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+treeInsert x (Node a left right)
+    | x == a = Node x left right
+    | x < a  = Node a (treeInsert x left) right
+    | x > a  = Node a left (treeInsert x right)
+</pre>
+
+`singleton` 這個 function 只是一個建立一個擁有某值與兩顆空子樹的節點的便捷方法。在插入 function 中，我們首先有個邊界條件作為模式。若是我們到達一棵空子樹，這代表我們到了我們想去的地方，並且我們以帶著這個元素的獨體樹取代這棵空樹。若是我們不是要插入到一棵空樹中，我們就必須檢查別的東西。首先，若是我們要插入的元素等於根元素，就回傳相同的一棵樹。若是它比較小，就回傳一棵擁有相同根元素、相同右子樹，但以一棵擁有我們插入的值到左子樹中的樹來替代其左子樹。若是我們的值大於根元素亦同（但左右相反過來）。
+
+接下來，我們要建立一個檢查某個元素是否在樹中的 function。首先，讓我們定義邊界條件。若是我們在一棵空樹中尋找元素，那它當然不在這裡。好。注意到這與在 list 中搜尋元素時的邊界條件是相同的。若是我們在一個空 list 中尋找一個元素，它就不在這裡。總而言之，若是你不在一棵空樹中尋找一個元素，我們就檢查其它的東西。若是在根節點的元素就是我們要找的，很好！如果不是，那怎麼辦？嗯，我們可以運用瞭解所有左邊的元素都小於根節點的優勢。所以若是我們在找的元素小於根節點，就檢查看看它是否在左子樹。如果它比較大，就檢查看看它是否在右子樹中。
+
+<pre name="code" class="haskell:hs">
+treeElem :: (Ord a) => a -> Tree a -> Bool
+treeElem x EmptyTree = False
+treeElem x (Node a left right)
+    | x == a = True
+    | x < a  = treeElem x left
+    | x > a  = treeElem x right
+</pre>
+
+我們必須去做的是以程式碼中寫下前面的段落。讓我們與我們的樹愉快相處！我們要使用一個摺疊來從一個 list 建立一棵樹，而非手動地建立一棵樹（雖然我們可以）。記住，幾乎每個一個接著一個元素尋訪 list、然後回傳某種值的東西都能夠以摺疊實作！我們要從空的樹開始，然後從右邊逼近一個 list，並一個元素接著一個元素插入到我們的累加樹。
+
+<pre name="code" class="haskell:ghci">
+ghci> let nums = [8,6,4,1,7,3,5]
+ghci> let numsTree = foldr treeInsert EmptyTree nums
+ghci> numsTree
+Node 5 (Node 3 (Node 1 EmptyTree EmptyTree) (Node 4 EmptyTree EmptyTree)) (Node 7 (Node 6 EmptyTree EmptyTree) (Node 8 EmptyTree EmptyTree))
+</pre>
+
+在這個 `foldr` 中，`treeInsert` 為摺疊 function（它取一棵樹與一個 list 元素，並產生一棵新的樹），`EmptyTree` 為起始累加器。當然，`nums` 是我們要摺疊的 list。
+
+當我們將我們的樹印到命令列時，它是非常不好讀的，但若是我們嘗試看看，我們還是可以識別它的結構。我們看到根節點為 5，然後它有兩棵子樹，其中一棵有個 3 的根節點，而另一棵為 7，等等。
+
+<pre name="code" class="haskell:ghci">
+ghci> 8 `treeElem` numsTree
+True
+ghci> 100 `treeElem` numsTree
+False
+ghci> 1 `treeElem` numsTree
+True
+ghci> 10 `treeElem` numsTree
+False
+</pre>
+
+檢查成員關係也運作良好。酷。
+
+所以如你所見，代數資料結構在 Haskell 中是個非常酷且有威力的概念。我們可以使用它來建立從布林值、weekday 列舉到二元搜尋樹與更多的任何東西！
+
 ## <a name="typeclasses-102">Typeclasses 102</a>
 
 ## <a name="a-yes-no-typeclass">一個 yes-no typeclass</a>
