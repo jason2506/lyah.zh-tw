@@ -737,7 +737,7 @@ Right "QOTSA"
 ## <a name="recursive-data-structures">遞迴資料結構</a>
 
 <img src="img/thefonz.png" alt="the fonz" style="float:right" />
-如同我們見過的，一個在代數資料型別中的建構子可以有多個（或是根本沒有）欄位，且每個欄位都必須為某個實體型別。考慮到這一點，我們可以建立其建構子擁有相同型別欄位的型別！藉此，我們可以建立遞迴資料結構，其中某個型別的值包含這個型別的值，接著這個值也包含更多相同型別的值等等。
+如同我們見過的，一個在代數資料型別中的建構子可以有多個（或是根本沒有）欄位，且每個欄位都必須為某個具體型別。考慮到這一點，我們可以建立其建構子擁有相同型別欄位的型別！藉此，我們可以建立遞迴資料結構，其中某個型別的值包含這個型別的值，接著這個值也包含更多相同型別的值等等。
 
 想想這個 list：`[5]`。這僅是 `5:[]` 的語法糖衣。在 `:` 左邊為一個值，而在右邊為一個 list。在這個例子中，它是個空 list。現在 `[4,5]` 這個 list 如何呢？嗯，它被去糖（desugar）為 `4:(5:[])`。看看第一個 `:`，我們看到在它的左邊也有一個元素、在它的右邊也有一個 list（`5:[]`）。同樣適用於像是 `3:(4:(5:6:[]))` 這樣的 list，它可以被寫成像是這樣、像是 `3:4:5:6:[]`（因為 `:` 是右結合）或是 `[3,4,5,6]`。
 
@@ -894,6 +894,149 @@ False
 所以如你所見，代數資料結構在 Haskell 中是個非常酷且有威力的概念。我們可以使用它來建立從布林值、weekday 列舉到二元搜尋樹與更多的任何東西！
 
 ## <a name="typeclasses-102">Typeclasses 102</a>
+
+<img src="img/trafficlight.png" alt="tweet" style="float:right" />
+到目前為止，我們學過一些標準的 Haskell typeclass，我們也看過屬於它們的型別了。我們也學過如何藉由要求 Haskell 為我們衍生實體來自動地建立我們自己的標準 typeclass 型別實體。在這一節，我們要學學如何建立我們自己的 typeclass，以及如何手動建立它們的型別實體。
+
+快速回顧一下 typeclass：typeclass 就像是介面。一個 typeclass 定義一些行為（像是比較相等性、比較順序、列舉），然後令能夠以這種方式運作的型別為這個 typeclass 的實體。typeclass 的行為藉由定義 function 或我們接著要實作的型別宣告來達成。所以當我們說一個型別為一個 typeclass 的實體時，我們指的是我們能夠以這個型別使用 typeclass 定義的 function。
+
+typeclass 與像是 Java 或是 Python 這類語言的類別幾乎沒什麼關係。這令許多人感到困惑，所以我要你現在就忘記在命令式語言中，你所知道關於類別的所有東西。
+
+舉例來說，`Eq` typeclass 代表可以被比較相等性的東西。它定義了 `==` 與 `/=` function。如果我們有個型別（假定為 `Car`），並且以相等性 function `==` 比較兩個 car 很合理，那麼 `Car` 作為 `Eq` 的實體就很合理了。
+
+這就是在標準函式庫中定義 `Eq` 的方式：
+
+<pre name="code" class="haskell:hs">
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    x == y = not (x /= y)
+    x /= y = not (x == y)
+</pre>
+
+哇，哇，哇！這裡有一些新的奇怪語法與關鍵字！別擔心，這一切立刻就會明瞭。首先，當你寫下 `class Eq a where` 時，這就代表我們定義了一個新的 typeclass，且它叫做 `Eq`。`a` 為型別變數，它代表 `a` 將會扮演我們不久將會令它作為 `Eq` 實體的型別。它不必被叫做 `a`，它甚至不必為一個字母，但它必須為小寫的字。接著，我們定義了多個 function。它並不強制去實作 function 主體本身，我們僅需為 function 指定型別宣告。
+
+<p class="hint">
+有些人可能認為，如果我們寫 <code>class Eq equatable where</code>，並像 <code>(==) :: equatable -> equatable -> Bool</code> 指定型別宣告是比較好的。
+</p>
+
+總而言之，我們為 `Eq` 定義的 function 實作了 function 主體，只是我們以交互遞迴（mutual recursion）的方式來定義它們。我們表明，如果兩個 `Eq` 實體沒有不同，它們就是相等的；如果它們不相等，它們就是不同的。其實我們不必去做這件事，但我們做了，且我們不久將會看到這對我們有何幫助。
+
+<p class="hint">
+若是我們已經說 <code>class Eq a where</code>，然後在這個 class 中像 <code>(==) :: a -> -a -> Bool</code> 定義一個型別宣告，當我們之後檢驗這個 function 的型別時，我們將會得到的型別為 <code>(Eq a) => a -> a -> Bool</code>。
+</p>
+
+所以一旦我們有一個 class，我們可以用它來做什麼？嗯，其實，沒有很多。但一旦我們開始建立這個 class 的型別實體，我們就開始得到一些不錯的功能。所以看看這個型別：
+
+<pre name="code" class="haskell:hs">
+data TrafficLight = Red | Yellow | Green
+</pre>
+
+它定義了一個紅綠燈的狀態。注意到我們沒有為它衍生任何 class 實體。這是因為我們要手動寫下一些實體，即使我們可以為它衍生像是 `Eq` 與 `Show`。以下是我們如何令它為 `Eq` 的實體：
+
+<pre name="code" class="haskell:hs">
+instance Eq TrafficLight where
+    Red == Red = True
+    Green == Green = True
+    Yellow == Yellow = True
+    _ == _ = False
+</pre>
+
+我們使用 <i>instance</i> 關鍵字來做到這件事。所以 <i>class</i> 是代表定義新的 typelclass，<i>instance</i> 是代表建立我們的 typeclass 型別實體。當我們定義 `Eq` 時，我們寫了 `class Eq a where`，並表示 `a` 扮演稍後將會作為實體的任何型別。這裡我們可以清楚地看到這件事，因為當我們建立一個實體時，我們寫了 `instance Eq TrafficLight where`。我們將 `a` 以實際的型別取代。
+
+因為在 <i>class</i> 宣告中，`==` 以 `/=` 的方式定義、反之亦然，所以我們在 <i>instance</i> 宣告只要覆寫其中一個。這被稱為 typeclass 的最小完整定義──我們必須實作的最低限度的 function，以讓我們的型別能讓 class 所說的那樣運作。為了要為 `Eq` 滿足最小完整定義，我們必須覆寫 `==` 或是 `/=`。若是 `Eq` 只像這樣被定義：
+
+<pre name="code" class="haskell:hs">
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+</pre>
+
+在令一個型別為其實體的時候，我們就必須都實作這些 function，因為 Haskell 並不知道這兩個 function 是相關的。這時最小完整定義就會是： `==` 與 `/=`。
+
+你可以看到我們簡單地藉由模式匹配來實作 `==`。由於有很多兩個燈號不相等的情況，所以我們指定了它們相等的情況，然後指定一個捕獲所有情況的模式，表明如果它沒有前面的組合，則兩個燈號就是不相等的。
+
+讓我們也手動令它為 `Show` 的實體。要為 `Show` 滿足最小完整定義，我們必須實作它的 `show` function，它接收一個值並將它轉成字串。
+
+<pre name="code" class="haskell:hs">
+instance Show TrafficLight where
+    show Red = "Red light"
+    show Yellow = "Yellow light"
+    show Green = "Green light"
+</pre>
+
+再一次，我們使用模式匹配來達成我們的目標。讓我們看看它如何實際運作：
+
+<pre name="code" class="haskell:ghci">
+ghci> Red == Red
+True
+ghci> Red == Yellow
+False
+ghci> Red `elem` [Red, Yellow, Green]
+True
+ghci> [Red, Yellow, Green]
+[Red light,Yellow light,Green light]
+</pre>
+
+不錯。我們可以直接衍生 `Eq`，且它會擁有相同的效果（但我們為了教育目的而不這麼做）。然而，衍生 `Show` 將會直接將值建構子轉成字串。但若是我們想要讓燈號像 `"Red light"` 這樣顯示，那我們就必須手動建立 instance 宣告。
+
+你也可以讓 typeclass 為其它 typeclass 的子類別。`Num` 的 <i>class</i> 宣告有一點長，但這是它最前面的部份：
+
+<pre name="code" class="haskell:hs">
+class (Eq a) => Num a where
+   ...
+</pre>
+
+如同我們先前提到的，有很多我們可以填進類別限制的地方。所以這就像是寫下 `class Num a where`，只是我們表示我們的型別 `a` 必須為 `Eq` 的實體。我們本質上是表明，我們必須在我們令一個型別為 `Num` 實體之前，令它為 `Eq` 的實體。在某型別可以被視為一個數字之前，我們可以判斷這個型別的值是否可以比較相等性是合理的。子類別化其實就這麼簡單，它僅是一個在 <i>class</i> 宣告上的一個類別限制！當我們在 <i>class</i> 宣告、或是在 <i>instance</i> 宣告中定義 function 主體的時候，我們可以假定 `a` 為 `Eq` 的一員，所以我們可以將 `==` 使用在這個型別的值上。
+
+但是要如何令 `Maybe` 或是 list 型別為 typeclass 的實體呢？`Maybe` 與 `TrafficLight` 的不同在於，`Maybe` 本身不是一個具體型別──它是一個接收一個型別參數（像是 `Char` 之類的）以產生一個具體型別（像是 `Maybe Char`）的型別建構子。讓我們再看一次 `Eq` typeclass：
+
+<pre name="code" class="haskell:hs">
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    x == y = not (x /= y)
+    x /= y = not (x == y)
+</pre>
+
+從型別宣告，我們看到 `a` 被用作一個具體型別，因為所有在 function 中的型別都必須是具體的（記住，你無法擁有一個型別為 `a -> Maybe` 的 function，但你可以有一個 `a -> Maybe a` 或是 `Maybe Int -> Maybe String` 的 function）。這就是為什麼我們不能像這樣做：
+
+<pre name="code" class="haskell:hs">
+instance Eq Maybe where
+    ...
+</pre>
+
+因為就像是我們所看到的，`a` 必須為一個具體型別，但 `Maybe` 不是個具體型別。它是一個接收一個參數、然後產生一個具體型別的型別建構子。為每個型別寫 `instance Eq (Maybe Int) where`、`instance Eq (Maybe Char) where`、等等也令人厭煩。所以我們可以像這樣寫：
+
+<pre name="code" class="haskell:hs">
+instance Eq (Maybe m) where
+    Just x == Just y = x == y
+    Nothing == Nothing = True
+    _ == _ = False
+</pre>
+
+這就像是說，我們想要讓所有 `Maybe something` 形式的型別為 `Eq` 的實體。我們實際上可以寫成 `(Maybe something)`，但我們通常選擇單一字母以符合 Haskell 風格。這裡的 `(Maybe m)` 扮演著 `class Eq a where` 的 `a` 的角色。`Maybe` 不是一個具體型別，而 `Maybe m` 是。藉由指定一個型別參數（`m`，它是小寫的），我們表明我們想要令所有 `Maybe m`──其中 `m` 為任意型別──形式的型別為 `Eq` 的實體。
+
+雖然這有一個問題。你能找出它嗎？我們將 `==` 使用在 `Maybe` 的內容上，但我們必須保證 `Maybe` 包含的值可以被 `Eq` 使用！這就是為什麼我們必須像這樣修改我們的 instance 宣告：
+
+<pre name="code" class="haskell:hs">
+instance (Eq m) => Eq (Maybe m) where
+    Just x == Just y = x == y
+    Nothing == Nothing = True
+    _ == _ = False
+</pre>
+
+我們必須加入一個型別限制！以這個 <i>instance</i> 宣告，我們表明：我們想要讓所有 `Maybe m` 形式的型別為 `Eq` typeclass 的一員，但只有 `m`（也就是包含在 `Maybe` 內部的型別）也為 `Eq` 一員的那些型別。這實際上也是 Haskell 衍生型別的方式。
+
+許多時候，在 <i>class</i> 宣告中的型別限制會被用來讓一個 typeclass 為另一個 typeclass 的子類別，而在 <i>instance</i> 宣告中會被用以表達某型別內容的要求。舉例來說，這裡我們需要 `Maybe` 的內容也為 `Eq` typeclass 的一員。
+
+在建立一個實體時，若是你看到一個型別在型別宣告中被用作一個具體型別（像是 `a -> a -> Bool` 中的 `a`），你就必須提供型別參數並加上括號，以讓你最終得到一個具體型別。
+
+<p class="hint">
+考慮到你嘗試令它為實體的型別將會取代 <i>class</i> 宣告中的參數。<code>class Eq a where</code> 的 <code>a</code> 在你建立一個實體時將會被取代成一個真實型別，所以也試著假想將你的型別擺進 function 的型別宣告中。<code>(==) :: Maybe -> Maybe -> Bool</code> 並不合理，但 <code>(==) :: (Eq m) => Maybe m -> Maybe m -> Bool</code> 是合理的。不過這只是一種思考方式，因為無論我們建立的型別為何，<code>==</code> 的型別總是為 <code>(==) :: (Eq a) => a -> a -> Bool</code>。
+</p>
+
+喔，還有一件事，聽我說！如果你想要看看一個 typeclass 有哪些實體，只要在 GHCI 執行 `:info YourTypeClass`。所以輸入 `:info Num` 會顯示 typeclass 定義的 function，且它會給你一個屬於這個 typeclass 的型別列表。`:info` 也作用在型別與型別限制上。如果你執行 `:info Maybe`，它將會將所有 `Maybe` 為實體的 typeclass 顯示給你。`:info` 也可以將一個 function 的型別宣告顯示給你。我想這非常酷。
 
 ## <a name="a-yes-no-typeclass">一個 yes-no typeclass</a>
 
