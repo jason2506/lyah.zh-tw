@@ -1040,6 +1040,114 @@ instance (Eq m) => Eq (Maybe m) where
 
 ## <a name="a-yes-no-typeclass">一個 yes-no typeclass</a>
 
+<img src="img/yesno.png" alt="yesno" style="float:left" />
+在 JavaScript 與一些其它的弱型別（weakly typed）語言中，你幾乎可以把任何東西擺進一個 if expression 中。舉例來說，你可以做下述所有的操作： `if (0) alert("YEAH!") else alert("NO!")` 、 `if ("") alert ("YEAH!") else alert("NO!")` 、 `if (false) alert("YEAH") else alert("NO!)` 、等等，而它們全都會丟出一個 `NO!` 的 alert。若是你執行 `if ("WHAT") alert ("YEAH") else alert("NO!")`，它將會 alert 一個 `"YEAH!"`，因為 JavaScript 將非空字串視為一種真值。
+
+雖然僅使用 `Bool` 代表布林語義（semantic）在 Haskell 中運作地比較好，但無論如何，讓我們試著實作這個 JavaScript 式的行為。為了好玩！讓我們以一個 <i>class</i> 宣告開始。
+
+<pre name="code" class="haskell:hs">
+class YesNo a where
+    yesno :: a -> Bool
+</pre>
+
+十分簡單。`YesNo` typeclass 定義了一個 function。這個 function 接收一個可以被視為擁有某種真值概念、並肯定地告訴我們它是否為真的型別的值。注意到我們將 `a` 使用在 function 的方式，`a` 必須為一個具體型別。
+
+接下來，讓我們定義一些實體。對於數字，我們要（如同在 JavaScript 中）假設任何非 0 數字為真，而 0 為假。
+
+<pre name="code" class="haskell:hs">
+instance YesNo Int where
+    yesno 0 = False
+    yesno _ = True
+</pre>
+
+空 list（以及字串）為假，而非空 list 為一個真值。
+
+<pre name="code" class="haskell:hs">
+instance YesNo [a] where
+    yesno [] = False
+    yesno _ = True
+</pre>
+
+注意到我們僅將一個型別參數 `a` 擺在這裡，以讓 list 為一個具體型別，即使我們不會做任何關於包含在 list 中的型別的假設。還有什麼，唔....我知道了，`Bool` 本身也持有真值與假值，而哪個是哪個是十分顯而易見的。
+
+<pre name="code" class="haskell:hs">
+instance YesNo Bool where
+    yesno = id
+</pre>
+
+阿？`id` 是什麼？這只是一個接收一個參數並回傳同一個值的標準函式庫 function，總之這就是我們要寫在這裡的東西。
+
+讓我們也令 `Maybe a` 作為實體。
+
+<pre name="code" class="haskell:hs">
+instance YesNo (Maybe a) where
+    yesno (Just _) = True
+    yesno Nothing = False
+</pre>
+
+我們不需要類別限制，因為我們不做任何關於 `Maybe` 內容的假設。我們只表明若是它為 `Just` 值它就為真，若是它是一個 `Nothing` 就為假。我們仍然必須寫成 `(Maybe a)` 而不僅是 `Maybe`，因為若是你仔細想想，一個 `Maybe -> Bool` function 無法存在（因為 `Maybe` 不是個具體型別），而 `Maybe a -> Bool` 則很正常。這依然非常酷，因為現在不管 `something` 是什麼，任何 `Maybe something` 形式的型別都是 `YesNo` 的一員。
+
+先前，我們定義了一個 `Tree a` 型別，它表示一棵二元搜尋樹。我們可以假定空樹為假，而任何不是一棵空樹的值都為真。
+
+<pre name="code" class="haskell:hs">
+instance YesNo (Tree a) where
+    yesno EmptyTree = False
+    yesno _ = True
+</pre>
+
+一個紅綠燈可以為 yes 或 no 值嗎？當然。如果它是紅燈，你就停。如果它是綠燈，你就走。如果它是黃燈呢？呃，我通常會闖黃燈，因為我為腎上腺素而活。
+
+<pre name="code" class="haskell:hs">
+instance YesNo TrafficLight where
+    yesno Red = False
+    yesno _ = True
+</pre>
+
+酷，現在我們有一些實體了，讓我們試試！
+
+<pre name="code" class="haskell:ghci">
+ghci> yesno $ length []
+False
+ghci> yesno "haha"
+True
+ghci> yesno ""
+False
+ghci> yesno $ Just 0
+True
+ghci> yesno True
+True
+ghci> yesno EmptyTree
+False
+ghci> yesno []
+False
+ghci> yesno [0,0,0]
+True
+ghci> :t yesno
+yesno :: (YesNo a) => a -> Bool
+</pre>
+
+是的，它正常運作。讓我們建立一個模仿 if 敘述的 function，但它與 `YesNo` 值一同運作。
+
+<pre name="code" class="haskell:hs">
+yesnoIf :: (YesNo y) => y -> a -> a -> a
+yesnoIf yesnoVal yesResult noResult = if yesno yesnoVal then yesResult else noResult
+</pre>
+
+十分直觀。它取一個 yes-no 值與兩個值。如果 yes-no 值為 yes，它就回傳兩個值的第一個值，否則它就回傳其中的第二個值。
+
+<pre name="code" class="haskell:ghci">
+ghci> yesnoIf [] "YEAH!" "NO!"
+"NO!"
+ghci> yesnoIf [2,3,4] "YEAH!" "NO!"
+"YEAH!"
+ghci> yesnoIf True "YEAH!" "NO!"
+"YEAH!"
+ghci> yesnoIf (Just 500) "YEAH!" "NO!"
+"YEAH!"
+ghci> yesnoIf Nothing "YEAH!" "NO!"
+"NO!"
+</pre>
+
 ## <a name="the-functor-typeclass">Functor typeclass</a>
 
 ## <a name="kinds-and-some-type-foo">Kind 與一些 type-foo</a>
