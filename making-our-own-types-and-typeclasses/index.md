@@ -1150,4 +1150,109 @@ ghci> yesnoIf Nothing "YEAH!" "NO!"
 
 ## <a name="the-functor-typeclass">Functor typeclass</a>
 
+到目前為止，我們已經遇過許多在標準函式庫中的 typeclass 了。我們用過 `Ord`，其代表可以被排序的東西。我們與 `Eq` 打過交道，其代表可以被比較相等性的東西。我們看過 `Show`，其提供介面給所有值皆可作為字串顯示的型別。在任何我們需要將字串轉成某型別的值的時候，我們的好朋友 `Read` 就在那裡。現在，我們要看看 <code class="label class">Functor</code> typeclass，它基本上代表可以被映射的東西。也許現在你正在想 list，因為在 Haskell 中映射到 list 是如此常見的一種慣用寫法。你是對的，list 型別為 `Functor` typeclass 的一員。
+
+有什麼比看看 `Functor` typeclass 如何實作更好的理解方式呢？讓我們偷看一眼。
+
+<pre name="code" class="haskell:hs">
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+</pre>
+
+<img src="img/functor.png" alt="I AM FUNCTOOOOR!!!" style="float:right" />
+很好。我們看到它定義了一個 function──`fmap`，而不為它提供任何的預設實作。`fmap` 的型別很有意思。在目前為止的 typeclass 定義中，扮演 typeclass 中型別的型別變數都是一個具體型別，像是 `(==) :: (Eq a) => a -> a -> Bool` 中的 `a`。但現在，`f` 不是個具體型別（一個可以擁有值的型別，像是 `Int`、`Bool`、`Maybe String`），而是個取一個型別參數的型別建構子。一個快速回顧的例子：`Maybe Int` 為一個具體型別，但 `Maybe` 是個取一個型別作為參數的型別建構子。總而言之，我們看到 `fmap` 接收一個從某個型別映射到另一個型別的 function、與一個套用到某個型別的 functor，並回傳一個套用在另一個型別的 functor。
+
+如果這聽起來有點混亂，別擔心。在我們檢驗幾個範例的時候，所有的一切都將顯露出來。唔，這個 `fmap` 的型別宣告提醒了我一些事。若是你不知道 `map` 的型別簽名是什麼，其為：`map :: (a -> b) -> [a] -> [b]`。
+
+阿，有意思！它接收一個從某個型別映射到另一個型別的 function、與一個某型別的 list，並回傳一個另一個型別的 list。我的朋友，我想我們自己就有一個 functor 了！事實上，`map` 僅是一個只作用在 list 上的 `fmap`。以下即是 list 如何作為一個 `Functor` typeclass 的實體。
+
+<pre name="code" class="haskell:hs">
+instance Functor [] where
+    fmap = map
+</pre>
+
+這就是了！注意到我們並非寫成 `instance Functor [a] where`，因為藉由 `fmap :: (a -> b) -> f a -> f b`，我們看到 `f` 必須為接收一個型別的型別建構子。`[a]` 已經是個具體型別（任意型別在其中的 list），而 `[]` 為一個取一個型別，並可以產生像是 `[Int]`、`[String]` 甚或是 `[[String]]` 的型別建構子。
+
+由於對於 list，`fmap` 就是 `map`，所以我們當我們對 list 使用它們的時候會得到相同的結果。
+
+<pre name="code" class="haskell:ghci">
+map :: (a -> b) -> [a] -> [b]
+ghci> fmap (*2) [1..3]
+[2,4,6]
+ghci> map (*2) [1..3]
+[2,4,6]
+</pre>
+
+當我們 `map` 或 `fmap` 一個空 list 會發生什麼呢？嗯，當然，我們會得到一個空 list。它僅是將一個型別為 `[a]` 的空 list 轉成型別為 `[b]` 的空 list。
+
+可以作為一個盒子的型別都可以是 functor。你可以將一個 list 想成一個有無限個小隔間的盒子，且它們可以全都為空、一個是滿的而其它為空、或是其中一些是滿的。所以，還有什麼型別具有像是一個盒子的特性嗎？其中一個是 `Maybe a` 型別。在某種程度上，這就像是一個不持有值──在這種情況中其值為 `Nothing`，或是持有一個像是 `"HAHA"` 的值──在這種情況中其值為 `Just "HAHA"`──的盒子。以下即是 `Maybe` 如何為一個 functor：
+
+<pre name="code" class="haskell:hs">
+instance Functor Maybe where
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing = Nothing
+</pre>
+
+再一次，注意到我們寫了 `instance Functor Maybe where` 而不是 `instance Functor (Maybe m) where`──就像是我們在處理 `Maybe` 與 `YesNo` 時所做的。`Functor` 想要一個接收一個型別的型別建構子，而不是一個具體型別。若是你在心中以 `Maybe` 取代 `f`，`fmap` 對於這個特定型別就像是 `(a -> b) -> Maybe a -> Maybe b`，這看起來不錯。但若是你以 `(Maybe m)` 取代 `f`，則它看起來會像是一個 `(a -> b) -> Maybe m a -> Maybe m b`，這根本該死的不合理，因為 `Maybe` 只取一個型別參數。
+
+總而言之，`fmap` 實作非常簡單。若是它是個 `Nothing` 的空值，就回傳一個 `Nothing`。若是我們映射在一個空盒子上，我們就會得到一個空盒子。這很合理。就像是若我們映射在一個空 list 上，我們就會得到一個空 list。若是它並非一個空值，而只有一個單一值被包在 `Just` 裡，我們就將 function 套用在 `Just` 的內容上。
+
+<pre name="code" class="haskell:ghci">
+ghci> fmap (++ " HEY GUYS IM INSIDE THE JUST") (Just "Something serious.")
+Just "Something serious. HEY GUYS IM INSIDE THE JUST"
+ghci> fmap (++ " HEY GUYS IM INSIDE THE JUST") Nothing
+Nothing
+ghci> fmap (*2) (Just 200)
+Just 400
+ghci> fmap (*2) Nothing
+Nothing
+</pre>
+
+另一個可以被映射與作為 `Functor` 實體的東西為我們的 `Tree a` 型別。它在某種程度上可以被想成一個盒子（持有多個值或沒有值），且 `Tree` 型別建構子接收恰好一個型別參數。若是你將 `fmap` 看做一個只為 `Tree` 而建立的 function，它的型別簽名看起來會像是 `(a -> b) -> Tree a -> Tree b`。我們要對這個 function 使用遞迴。映射在一棵空樹上會產生一棵空樹。映射在一棵非空的樹會是一棵由我們的 function 應用到根的值，而其左右子樹將會為原先的子樹，只是我們的 function 會映射到它們上的樹。
+
+<pre name="code" class="haskell:hs">
+instance Functor Tree where
+    fmap f EmptyTree = EmptyTree
+    fmap f (Node x leftsub rightsub) = Node (f x) (fmap f leftsub) (fmap f rightsub)
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> fmap (*2) EmptyTree
+EmptyTree
+ghci> fmap (*4) (foldr treeInsert EmptyTree [5,7,3,2,1,7])
+Node 28 (Node 4 EmptyTree (Node 8 EmptyTree (Node 12 EmptyTree (Node 20 EmptyTree EmptyTree)))) EmptyTree
+</pre>
+
+好！現在 `Either a b` 如何？可以令它為一個 functor 嗎？`Functor` typeclass 想要一個只取一個型別參數的型別建構子，但 `Either` 取兩個。唔！我知道了，我們要藉由只餵給它一個參數、以讓它有一個自由參數，來部分應用 `Either`。以下是在標準函式庫中，`Either a` 如何為一個 functor：
+
+<pre name="code" class="haskell:ghci">
+instance Functor (Either a) where
+    fmap f (Right x) = Right (f x)
+    fmap f (Left x) = Left x
+</pre>
+
+嗯嗯，我們在這裡做了什麼？你可以看到我們令 `Either a` 作為實體，而非 `Either`。若是 `fmap` 被特定為 `Either a`，這時其型別簽名會是 `(b -> c) -> Either a b -> Either a c`，因為這與 `(b -> c) -> (Either a) b -> (Either a) c` 相同。在實作中，我們在 `Right` 值建構子的情況中進行映射，但我們在 `Left` 的情況中不這麼做。為何如此？嗯，若是你回頭看 `Either a b` 型別是如何定義的，它有點像是：
+
+<pre name="code" class="haskell:hs">
+data Either a b = Left a | Right b
+</pre>
+
+嗯，若是我們想要映射一個 function 在它們兩者上，`a` 與 `b` 就必須為相同型別。我指的是，若是我們試圖映射一個接收一個字串並回傳一個字串的 function，且 `b` 為一個字串、但 `a` 為一個數字，這就不會真的運作。同樣的，藉由看看在 `fmap` 只操作在 `Either` 值上時它的型別會是什麼，我們看到第一個參數必須維持相同，而第二個參數可以改變，而第一個參數是由 `Left` 值建構子實現。
+
+若我們將 `Left` 部分想成類似一個空盒子，帶著一個寫在旁邊的錯誤訊息以告訴我們為什麼它是空的，這也就與我們的盒子類比很相配。
+
+也可以令 `Data.Map` 的 map 為一個 functor，因為它持有（或是不持有！）值。在 `Map k v` 的情況中，`fmap` 會映射一個 function `v -> v'` 到一個型別為 `Map k v` 的 map 上，並回傳一個型別為 `Map k v'` 的 map。
+
+<p class="hint">
+注意，<code>'</code> 在型別中沒有特別的意義，就如同在命名值時它不具有特殊意義。它被用來表示類似的東西，只是被略微修改。
+</p>
+
+試著自己想出如何令 `Map k` 為 `Functor` 的實體！
+
+以 `Functor` typeclass，我們看到 typeclass 可以如何表示非常酷的高階概念。我們也有一些更多帶著部分應用型別與建立實體的練習。在接下來的其中一章，我們也會看看一些應用 function 的法則。
+
+<p class="hint">
+<em>還有一件事！</em>functor 需要遵守某些法則，以讓它有某些我們可以依靠、且不會想太多的特性。若是我們使用 <code>fmap (+1)</code> 在 list <code>[1,2,3,4]</code> 上，我們期望結果為 <code>[2,3,4,5]</code>，而不是它的反轉──<code>[5,4,3,2]</code>。若是我們在某個 list 上使用 <code>fmap (\a -> a)</code>（identity function，其僅傳回它的參數），我們期望得到相同的 list 作為結果。舉例來說，若是我們將錯誤的 functor 實體給予我們的 <code>Tree</code> 型別，使用 <code>fmap</code> 在一棵某節點左子樹只有小於這個節點的元素、而右子樹只有大於這個節點的元素的樹上，可能會產生一棵不為此種情況的樹<span class="note">〔譯註：簡單來說，就是產生出來的樹可能不符合我們的二元搜尋樹定義〕</span>。我們要在接下來的其中一章更深入地探討 functor 法則。
+</p>
+
 ## <a name="kinds-and-some-type-foo">Kind 與一些 type-foo</a>
