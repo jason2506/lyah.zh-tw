@@ -1256,3 +1256,126 @@ data Either a b = Left a | Right b
 </p>
 
 ## <a name="kinds-and-some-type-foo">Kind 與一些 type-foo</a>
+
+<img src="img/typefoo.png" alt="TYPE FOO MASTER" style="float:right" />
+型別建構子接收其他型別作為參數以產生具體型別。這令我想起了 function，其接收值作為參數以產生值。我們已經看過型別建構子可以被部分應用（`Either String` 為一個接收一個型別並產生一個具體型別──像是 `Either String Int`──的型別），就如同 function 能做的。這確實非常有趣。在這一節，我們要看看應用在型別建構子的型別的正式定義，就像是我們利用型別宣告看過應用在 function 的值的正式定義一樣。*要繼續你的 Haskell 奇妙探索，你不必真的閱讀這一章*，若是你不瞭解它，不必為此擔心。然而，瞭解這些會讓你對於型別系統有非常透徹的理解。
+
+所以，像是 `3`、`"YEAH"` 或 `takeWhile` 這些值（function 也是值，但我們可以忽略這一類情況）都有它們自己的型別。型別為值所帶著以讓我們可以推論值的小標籤。但型別有它們自己的小標籤，叫做 *kind*。一個 kind 是一個型別的大致型別。這聽起來可能有一點怪異，但它實際上是個非常酷的概念。
+
+kind 是什麼，它又好在哪？嗯，讓我們在 GHCI 中使用 `:k` 命令來解釋一個型別的 kind。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Int
+Int :: *
+</pre>
+
+一個星號？多麼古怪。這意味著什麼？一個 `*` 代表型別為具體型別。一個具體型別為一個不接收任何型別參數的型別，且值的型別只可以是具體型別。若是我不得不大聲地將 `*` 讀出來（迄今我還不曾必須如此），我會唸作<i>星號</i>或是<i>型別</i>。
+
+好，現在讓我們看看 `Maybe` 的 kind 是什麼。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Maybe
+Maybe :: * -> *
+</pre>
+
+`Maybe` 型別建構子接收一個具體型別（像是 `Int`），然後回傳一個像是 `Maybe Int` 的具體型別。而這就是這個 kind 告訴我們的。就像是 `Int -> Int` 意指一個 function 接收一個 `Int` 並回傳一個 `Int`，`* -> *` 代表型別建構子接收一個具體型別並回傳一個具體型別。讓我們將型別參數應用到 `Maybe`，並看看這個型別的 kind 是什麼。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Maybe Int
+Maybe Int :: *
+</pre>
+
+就如同我預期的！我們將型別參數應用到 `Maybe` 上，並得到一個具體型別（這即是 `* -> *` 所表達的）。有個與此相似的情況（雖然不等價，型別與 kind 是兩個不同的東西）是在我們執行 `:t isUpper` 與 `:t isUpper 'A'` 的時候。`isUpper` 型別為 `Char -> Bool`，而 `isUpper 'A'` 型別為 `Bool`，因為它的值基本上是 `True`。然而，這兩個型別的 kind 都為 `*`。
+
+我們將 `:k` 使用在一個型別以得到它的 kind，就像是我們可以將 `:t` 使用在一個值以得到它的型別。如同我們所說的，型別為值的標籤，而 kind 為型別的標籤，而這就是兩者之間的相似之處。
+
+讓我們看看另一個 kind。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Either
+Either :: * -> * -> *
+</pre>
+
+啊哈，這告訴我們 `Either` 接收兩個具體型別作為參數以產生一個具體型別。它看起來也有點像是一個接收兩個值、並回傳某值的 function 型別宣告。型別建構子是 curried 的（就像是 function），所以我們可以部分應用它們。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Either String
+Either String :: * -> *
+ghci> :k Either String Int
+Either String Int :: *
+</pre>
+
+當我們要使 `Either` 為 `Functor` typeclass 的一員時，我們必須部分應用它，因為 `Functor` 想要只取一個參數的型別，而 `Either` 取兩個。換句話說，`Functor` 想要 kind 為 `* -> *` 的型別，所以我們必須部分應用 `Either` 以得到 kind 為 `* -> *` 的型別，而不是它原本的 kind `* -> * -> *`。若是我們再次看看 `Functor` 的定義：
+
+<pre name="code" class="haskell:hs">
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+</pre>
+
+我們看到 `f` 型別變數被當做一個接收一個具體型別以產生一個具體型別的型別使用。我們知道它必須產生一個具體型別，因為它被當作在一個 function 中的一個值的型別使用。由此開始，我們可以推論想與 `Functor` 做朋友的型別的 kind 必須為 `* -> *`。
+
+現在，讓我們做一些 type-foo。看看這個我現在正打算要建立的 typeclass：
+
+<pre name="code" class="haskell:hs">
+class Tofu t where
+    tofu :: j a -> t a j
+</pre>
+
+小子，這看起來很古怪。我們怎麼會建立一個可以為這個奇怪 typeclass 實體的型別？嗯，讓我們看看它的 kind 必須是什麼。因為 `j a` 被用作一個 `tofu` function 接收作為其參數值的型別，所以 `j a` 的 kind 必須為 `*`。我們假設 `a` 為 `*`，所以我們可以推論 `j` 的 kind 必須為 `* -> *`。我們看到 `t` 也必須產生一個具體值，且它接收兩個型別。並且得知 `a` 的 kind 為 `*`，且 `j` 的 kind 為 `* -> *`，我們推論 `t` 的 kind 必須為 `* -> (* -> *) -> *`。所以它取一個具體型別（`a`）、一個接收一個具體型別的型別建構子（`j`），並產生一個具體型別。哇喔。
+
+好，讓我們建立一個 kind 為 `* -> (* -> *) -> *` 的型別。以下是處理這件事的一種方式。
+
+<pre name="code" class="haskell:hs">
+data Frank a b  = Frank {frankField :: b a} deriving (Show)
+</pre>
+
+我們是如何知道這個型別的 kind 為 `* -> (* -> *) - > *` 呢？嗯，ADT 中的欄位被建立以持有值，所以它們的 kind 顯然必須為 `*`。我們假設 `a` 為 `*` ，這意味著 `b` 接收一個型別參數，所以它的 kind 為 `* -> *`。現在我們知道 `a` 與 `b` 的 kind 了，且因為它們都是 `Frank` 的參數，所以我們發現 `Frank` 的 kind 為 `* -> (* -> *) -> *`。第一個 `*` 表示 `a`，而 `(* -> *)` 表示 `b`。讓我們建立一些 `Frank` 並檢驗它們的型別。
+
+<pre name="code" class="haskell:ghci">
+ghci> :t Frank {frankField = Just "HAHA"}
+Frank {frankField = Just "HAHA"} :: Frank [Char] Maybe
+ghci> :t Frank {frankField = Node 'a' EmptyTree EmptyTree}
+Frank {frankField = Node 'a' EmptyTree EmptyTree} :: Frank Char Tree
+ghci> :t Frank {frankField = "YES"}
+Frank {frankField = "YES"} :: Frank Char []
+</pre>
+
+唔。因為 `frankField` 有一個 `a b` 形式的型別，所以它的值也必須擁有相似形式的型別。所以它可以為 `Just "HAHA"`──其型別為 `Maybe [Char]`，或者它可以為 `['Y','E','S']`──其型別為 `[Char]`（若是我們為此使用我們自己的 list 型別，它的型別將會是 `List Char`）。我們看到 `Frank` 值的型別對應到 `Frank` 的 kind。`[Char]` 的 kind 為 `*`，而 `Maybe` 的 kind 為 `* -> *`。為了要擁有一個值，它必須為一個具體型別、於是它必須被完全應用，所以每個 `Frank blah blaah` 值的 kind 皆為 `*`。
+
+令 `Frank` 為 `Tofu` 的實體十分簡單。我們看到 `tofu` 取一個 `j a`（這種形式的型別的一個例子是 `Maybe Int`），並回傳一個 `t a j`。所以若是我們以 `Frank` 取代 `j`，產生的型別將會是 `Frank Int Maybe`。
+
+<pre name="code" class="haskell:hs">
+instance Tofu Frank where
+    tofu x = Frank x
+</pre>
+
+<pre name="code" class="haskell:ghci">
+ghci> tofu (Just 'a') :: Frank Char Maybe
+Frank {frankField = Just 'a'}
+ghci> tofu ["HELLO"] :: Frank [Char] []
+Frank {frankField = ["HELLO"]}
+</pre>
+
+不是非常有用，但我們展現了我們的型別的能力。讓我們來多做一些 type-foo。我們有這個資料型別：
+
+<pre name="code" class="haskell:hs">
+data Barry t k p = Barry { yabba :: p, dabba :: t k }
+</pre>
+
+現在我們想要令它為 `Functor` 的實體。`Functor` 想要 kind 為 `* -> *` 的型別，但 `Barry` 的 kind 看起來並不像是如此。`Barry` 的 kind 是什麼呢？嗯，我們看到它取三個型別參數，所以它會是 `something -> something -> something -> *`。假定 `p` 為一個具體型別──於是其 kind 為 `*`──是安全的。對於 `k`，我們假定為 `*`，並以此延伸得到 `t` 的 kind 為 `* -> *`。現在讓我們以這些 kind 取代我們用來當做佔位符（placeholder）使用的 <i>something</i>，我們發現它的 kind 為 `(* -> *) -> * -> * -> *`。讓我們以 GHCI 檢驗它。
+
+<pre name="code" class="haskell:ghci">
+ghci> :k Barry
+Barry :: (* -> *) -> * -> * -> *
+</pre>
+
+喔，我們是對的。多麼令人滿意。現在，為了要建立為 `Functor` 一員的這個型別，我們必須部分應用前兩個型別參數，以讓我們留下 `* -> *`。這意味著 instance 宣告的開頭將會是：`instance Functor (Barry a b) where`。若是我們把 `fmap` 當做它是特別為了 `Barry` 而建立的，它的型別將會是 `fmap :: (a -> b) -> Barry c d a -> Barry c d b`，因為我們將 `Functor` 的 `f` 取代為 `Barry c d`。`Barry` 的第三個型別參數必須被改變，我們發現這在它自己的欄位中非常方便。
+
+<pre name="code" class="haskell:hs">
+instance Functor (Barry a b) where
+    fmap f (Barry {yabba = x, dabba = y}) = Barry {yabba = f x, dabba = y}
+</pre>
+
+這就對了！我們僅將 `f` 映射到第一個欄位上。
+
+在這一節，我們好好地看過了型別參數如何運作，並以 kind 形式化它們，就如同我們以型別宣告形式化 function 參數一樣。我們發現 function 與型別建構子之間有著有趣的相似之處。然而，它們是兩個完全不同的東西。當我們真正在 Haskell 上操作時，你通常不需要像我們現在所做的手動操作 kind 以及進行 kind 推導。通常，你僅需要在你令自己的型別為其中一個標準 typeclass 的實體時部分應用它為 `* -> *` 或是 `*`，但瞭解如何與為什麼它實際上的運作是有益的。看看型別擁有它們自己的小型別也很有趣。再一次，你不必真的瞭解我們在這裡所做的每件事，但若是你瞭解 kind 如何運作，有可能你會對 Haskell 的型別系統有非常堅實的體會。
