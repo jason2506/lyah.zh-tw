@@ -4,6 +4,9 @@ title: 建立我們自己的型別與 Typeclass
 prev:
     url: modules
     title: 模組
+next:
+    url: input-and-output
+    title: 輸入與輸出
 ---
 
 在前面的章節，我們談了一些現有的 Haskell 型別與 typeclass。在這一章，我們要學習如何建立我們自己的型別與 typeclass、以及如何讓它們運作！
