@@ -178,7 +178,7 @@ reverseWords = unwords . map reverse . words
 <em>提點：</em>要執行一個程式，你可以藉由 <code>ghc --make helloworld</code> 編譯它，然後藉由 <code>./helloworld</code> 執行生成的執行檔、或是使用 <code>runhaskell</code> 命令，像是：<code>runhaskell helloworld.hs</code>，而你的程式將會立刻被執行。
 </p>
 
-首先，讓我們看看 `reverseWords` function。它僅是一個取一個像是 `"hey there man"` 的字串、然後以它呼叫 `words` 以產生一個像是 `["hey","there","man"]` 的單詞 list 的普通 function。然後我們將 `reverse` 映射到 list 上、得到 `["yeh","ereht","nam"]`，然後我們使用 `unwords` 將它擺回字串中，最終結果為 `"yeh ereht nam"`。看看在這裡我們是如何使用複合函數的。少了複合函數，我們就必須寫下像是 `reverseWords st = unwords (map reverse (words st))` 這樣的東西。
+首先，讓我們看看 `reverseWords` function。它僅是一個取一個像是 `"hey there man"` 的字串、然後以它呼叫 `words` 以產生一個像是 `["hey","there","man"]` 的單詞 list 的普通 function。然後我們將 `reverse` 映射到 list 上、得到 `["yeh","ereht","nam"]`，然後我們使用 `unwords` 將它擺回字串中，最終結果為 `"yeh ereht nam"`。看看在這裡我們是如何使用 function composition 的。少了 function composition，我們就必須寫下像是 `reverseWords st = unwords (map reverse (words st))` 這樣的東西。
 
 `main` 怎麼樣？首先，我們藉由執行 `getLine` 來從終端機取得一行，並將這行叫做 `line`。然後，我們有個條件式 expression。記得在 Haskell 中，每個 <i>if</i> 必須有個對應的 <i>else</i>，因為每個 expression 都必須擁有某個值。我們弄了個 <i>if</i>，以在條件為真的時候（在我們的情況裡，就是我們輸入的是空行）執行其 I/O 動作；而在條件不為真的時候，在 <i>else</i> 下的 I/O 動作就會被執行。這就是為什麼在一個 I/O <i>do</i> 區塊中，<i>if</i> 必須為 <code>if <i>condition</i> then <i>I/O action</i> else <i>I/O action</i></code> 的形式。
 
@@ -445,6 +445,448 @@ orange
 別將像是 `putStrLn` 這樣的 function 想成是一個接收一個字串並將它印在螢幕上的 function。將它想成一個接收一個字串並回傳一個 I/O 動作的 function。這個 I/O 動作將會──在執行的時候──在你的終端機上印出美妙的詩句。
 
 ## <a name="files-and-streams">檔案與串流</a>
+
+<img src="img/streams.png" alt="streams" style="float:right" />
+`getChar` 是一個從終端機讀取單一字元的 I/O 動作。`getLine` 是一個從終端機讀取一行的 I/O 動作。這兩者十分直觀，許多程式語言都有類似於此的 function 或敘述。但現在，讓我們看看 <code class="label function">getContents</code>。`getContents` 是一個從標準輸入（standard input）讀取任何東西、直到它遇到檔案結尾（end-of-file，eof）字元為止的 I/O 動作。它的型別為 `getContents :: IO String`。`getContents` 酷的地方在於它做的是惰性 I/O。當我們執行 `foo <- getContents` 時，它不會立即讀取所有的輸入、將它儲存在記憶體、然後將它綁定到 `foo`。不會的，它很懶惰！它會說：<i>「是是，我晚點就會從終端機讀取輸入，在你真的需要它的時候！」</i>.
+
+`getContents` 在我們要將一個程式的輸出導向（pipe）到我們程式的輸入時十分有用。假如你不知道導向在 unix 系統中是如何運作的，這裡有個快速入門。讓我們建立一個包含下述小俳句的文字檔：
+
+<pre name="code" class="plain">
+I'm a lil' teapot
+What's with that airplane food, huh?
+It's so small, tasteless
+</pre>
+
+是阿，這個俳句很爛，有什麼關係呢？如果哪個人知道任何不錯的俳句教學，讓我知道吧。
+
+現在，回想起我們在介紹 `forever` function 時寫的小程式吧。它要求使用者輸入一行、以大寫形式回傳給他，然後再做一遍同樣的事情，無限進行下去。為了讓你不必一路捲回去，這裡再寫一次：
+
+<pre name="code" class="haskell:hs">
+import Control.Monad
+import Data.Char
+
+main = forever $ do
+    putStr "Give me some input: "
+    l <- getLine
+    putStrLn $ map toUpper l
+</pre>
+
+我們要將這個程式存成 `capslocker.hs` 或是什麼的，然後編譯它。然後，我們要使用一個 unix 導向，來將我們的文字檔直接餵給我們的小程式。我們要使用 GNU <i>cat</i> 的幫助，其會印出作為參數給予它的檔案。檢查看看，booyaka！
+
+<pre name="code" class="plain">
+$ ghc --make capslocker
+[1 of 1] Compiling Main             ( capslocker.hs, capslocker.o )
+Linking capslocker ...
+$ cat haiku.txt
+I'm a lil' teapot
+What's with that airplane food, huh?
+It's so small, tasteless
+$ cat haiku.txt | ./capslocker
+I'M A LIL' TEAPOT
+WHAT'S WITH THAT AIRPLANE FOOD, HUH?
+IT'S SO SMALL, TASTELESS
+capslocker &lt;stdin&gt;: hGetLine: end of file
+</pre>
+
+如你所見，將一個程式（在我們的例子中是 <i>cat</i>）的輸出導向到另一個程式（<i>capslocker</i>）的輸入是以 `|` 來做到。我們所做的幾乎等同於直接執行 <i>capslocker</i>、在終端機輸入我們的俳句、然後送出檔案結尾符號（這通常藉由按下 Ctrl-D 來做到）。它就像是執行 <i>cat haiku.txt</i>，然後說：「等等，別把這個印到終端機上，而是把它告訴 <i>capslocker</i>！」
+
+所以我們使用 `forever` 所做的，基本上是取得輸入、並將它轉換成某個輸出。這就是為什麼我們必須使用 `getContents` 來讓我們的程式更短、更好：
+
+<pre name="code" class="haskell:hs">
+import Data.Char
+
+main = do
+    contents <- getContents
+    putStr (map toUpper contents)
+</pre>
+
+我們執行 `getContents` 這個 I/O 動作，並將它產生的字串命名為 `contents`。然後，我們將 `toUpper` 映射到這個字串，並將它印在終端機上。謹記於心，由於字串基本上是個惰性的 list，且 `getContents` 是個惰性 I/O，所以在印出大寫的版本之前，它不會立即試著讀取全部內容、並將它儲存到記憶體中。更確切地說，它會在它讀取它的時候印出大寫的版本，因為它只有在它真的需要的時候才會從輸入讀取一行。
+
+<pre name="code" class="plain">
+$ cat haiku.txt | ./capslocker
+I'M A LIL' TEAPOT
+WHAT'S WITH THAT AIRPLANE FOOD, HUH?
+IT'S SO SMALL, TASTELESS
+</pre>
+
+酷，它正常運作。若是我們直接執行 <i>capslocker</i>，並試著輸入幾行呢？
+
+<pre name="code" class="plain">
+$ ./capslocker
+hey ho
+HEY HO
+lets go
+LETS GO
+</pre>
+
+我們藉由按下 Ctrl-D 來離開程式。非常好！如你所見，它會一行接著一行將我們的大寫輸入印出來給我們。當 `getContents` 的結果被綁定到 `contents` 上時，它在記憶體中並不是以真正的字串被表示，而比較像是一個「它最終將會產生字串」的承諾。當我們將 `toUpper` 映射到 `contents` 時，這同樣是個「這個 function 會映射到最終結果」的承諾。最後當 `putStr` 發生時，它會要求先前的承諾：<i>「嘿，我需要一行大寫字串！」</i>它還不擁有任何一行，所以它對 `contents` 說：<i>「嘿，真的去從終端機取出一行怎麼樣？」</i>所以這就是 `getContents` 真的從終端機讀取一行、並將之給予要求它產生某些明確東西的程式的時候。這個程式接著將 `toUpper` 映射到這一行，並將它交給 `putStr` 來印出它。然後，`putStr` 說：<i>「嘿，我需要下一行，來吧！」</i>，而這會重複到沒有更多輸入的時候，其被表示為檔案結尾字元。
+
+讓我們建立一個接收某個輸入、並只印出短於十個字元的那幾行的程式。看看吧：
+
+<pre name="code" class="haskell:hs">
+main = do
+    contents <- getContents
+    putStr (shortLinesOnly contents)
+
+shortLinesOnly :: String -> String
+shortLinesOnly input =
+    let allLines = lines input
+        shortLines = filter (\line -> length line < 10) allLines
+        result = unlines shortLines
+    in  result
+</pre>
+
+我們已經讓我們程式的 I/O 部分盡可能地短。因為我們的程式應該接收某個輸入、並基於輸入印出某個輸出，所以我們可以藉由讀取輸入內容、以它執行一個 function、然後印出 function 傳回的東西的方式來實作它。
+
+`shortLinesOnly` function 像這樣運作：它取一個字串，像是 `"short\nlooooooooooooooong\nshort again"`。這個字串有三行，其中兩行很短，而中間那行很長。它以這個字串執行 `lines` function，其會將它轉成 `["short", "looooooooooooooong", "short again"]`，然後我們將它綁定到 `allLines` 這個名稱上。這個字串 list 接著被過濾，使得只有短於十個字元的那幾行留在 list 中，產生 `["short", "short again"]`。最後，`unlines` 會將這個 list 結合成一個換行分隔的單一字串，得到 `"short\nshort again"`。讓我們試一試。
+
+<pre name="code" class="plain">
+i'm short
+so am i
+i am a loooooooooong line!!!
+yeah i'm long so what hahahaha!!!!!!
+short line
+loooooooooooooooooooooooooooong
+short
+</pre>
+
+<pre name="code" class="plain">
+$ ghc --make shortlinesonly
+[1 of 1] Compiling Main             ( shortlinesonly.hs, shortlinesonly.o )
+Linking shortlinesonly ...
+$ cat shortlines.txt | ./shortlinesonly
+i'm short
+so am i
+short
+</pre>
+
+我們將 <i>shortlines.txt</i> 的內容導向到 <i>shortlinesonly</i> 的輸入。且如同輸出，我們只取短的那幾行。
+
+這種從輸入取得某字串、以一個 function 轉換它、然後輸出它的模式是如此的常見，所以這裡有個叫做 <code class="label function">interact</code> 的 function 能令此更加容易。`interact` 取一個型別為 `String -> String` 的 function 作為參數，並回傳一個將取某個輸入、對它執行 function、然後印出 function 結果的 I/O 動作。讓我們使用它來修改我們的程式。
+
+<pre name="code" class="haskell:hs">
+main = interact shortLinesOnly
+
+shortLinesOnly :: String -> String
+shortLinesOnly input =
+    let allLines = lines input
+        shortLines = filter (\line -> length line < 10) allLines
+        result = unlines shortLines
+    in  result
+</pre>
+
+為了表現它能夠以更短的程式碼達成（即使它會比較不易讀），並顯示我們的 function composition 技能，我們要稍微進一步地修改它。
+
+<pre name="code" class="haskell:hs">
+main = interact $ unlines . filter ((<10) . length) . lines
+</pre>
+
+哇，我們真的將它減少到只有一行，這真的好酷！
+
+`interact` 可以被用來建立將某些內容導向到它、然後倒出某個結果的程式，或是被用來建立從使用者取得一行輸入、基於這一行回傳某個結果、然後再取另一行、並如此進行下去的程式。這兩者之間實際上沒有真正的區別，它僅是視使用者應該如何用它而定的。
+
+讓我們建立一個持續讀取一行、然後告訴我們這行是否是個回文（palindrome）的程式。我們可以僅用 `getLine` 來讀取一行、告訴使用者它是否是個回文、然後再一次執行 `main`。但若是我們使用 `interact` 會更加簡單。使用 `interact` 的時候，想一想要將某個輸入轉換成所需的輸出，你所需要的是什麼。在我們的情況中，我們必須將輸入的每一行以 `"palindrome"` 或是 `"not a palindrome"` 取代。所以我們必須寫一個將某個像是 `"elephant\nABCBA\nwhatever"` 的值轉成 `"not a palindrome\npalindrome\nnot a palindrome"` 的 function。讓我們動手做吧！
+
+<pre name="code" class="haskell:hs">
+respondPalindromes contents = unlines (map (\xs -> if isPalindrome xs then "palindrome" else "not a palindrome") (lines contents))
+    where   isPalindrome xs = xs == reverse xs
+</pre>
+
+讓我們以 point-free 的形式寫它。
+
+<pre name="code" class="haskell:hs">
+respondPalindromes = unlines . map (\xs -> if isPalindrome xs then "palindrome" else "not a palindrome") . lines
+    where   isPalindrome xs = xs == reverse xs
+</pre>
+
+十分直觀。首先它將某個像是 `"elephant\nABCBA\nwhatever"` 的值轉成 `["elephant", "ABCBA", "whatever"]`、然後它將這個 lambda 映射到它之上，得到 `["not a palindrome", "palindrome", "not a palindrome"]`、然後 `unlines` 將這個 list 結合成一個單一的、以換行分隔的字串。現在我們可以做：
+
+<pre name="code" class="haskell:hs">
+main = interact respondPalindromes
+</pre>
+
+讓我們測試看看：
+
+<pre name="code" class="plain">
+$ runhaskell palindromes.hs
+hehe
+not a palindrome
+ABCBA
+palindrome
+cookie
+not a palindrome
+</pre>
+
+即使我們建立一個將一個輸入的大字串轉換成另一個字串的程式，它表現得依然像是我們建立的是一行接著一行做的程式。這是因為 Haskell 是惰性的，且它想要印出結果字串的第一行，但因為它仍未擁有輸入的第一行，所以它無法如此。所以只要我們給它輸入的第一行，它就會印出輸出的第一行。我們藉由送出檔案結尾字元來離開這個程式。
+
+我們也可以僅藉由將一個檔案導向它來使用這個程式。讓我們假定我們有這個檔案：
+
+<pre name="code" class="haskell:hs">
+dogaroo
+radar
+rotor
+madam
+</pre>
+
+並且將它存成 `words.txt`。這即是我們藉由將它導向到我們程式而得的：
+
+<pre name="code" class="plain">
+$ cat words.txt | runhaskell palindromes.hs
+not a palindrome
+palindrome
+palindrome
+palindrome
+</pre>
+
+再一次，我們得到如同我們執行我們的程式、並由我們自己在標準輸入中輸入文字而得的相同輸出。我們沒看到 `palindromes.hs` 的輸入，因為輸入來自於檔案，而不是來自於我們打字進去。
+
+所以現在你大概瞭解惰性 I/O 如何運作、以及我們能如何用它來做為我們的優勢了。你可以僅從對於某個給定輸入的輸出應該是什麼的角度來思考，並寫下一個 function 來達成這個轉換。在惰性 I/O 中，沒有任何東西會從輸入被吃掉，直到它確實要如此的時候，因為我們現在就要依賴此輸入來印出東西。
+
+到目前為止，我們已經藉由將東西印到終端機上、以及從終端機讀取東西與 I/O 一同運作過了。但要怎麼樣讀取並寫入檔案呢？嗯，在某種程度上，我們已經做到這件事了。一種思考從終端機進行讀取的方式，是去想像它就像是從一個（有點特殊的）檔案進行讀取。同樣適用於寫入到終端機，它有點像是寫入到一個檔案。我們可以將這兩個檔案叫做 `stdout` 與 `stdin`，分別代表<i>標準輸出（standard output）</i>與<i>標準輸入（standard input）</i>。謹記於心，我們會發現從檔案進行寫入與讀取，非常近似於寫入到標準輸出與讀取自標準輸入。
+
+我們要從一個開啟一個叫做 <i>girlfriend.txt</i> 的檔案──其包含來自 Avril Lavigne 第一首熱門單曲 <i>Girlfriend</i> 的一節，並僅將它印到終端機上的非常簡單的程式開始。這即是 <i>girlfriend.txt</i>：
+
+<pre name="code" class="plain">
+Hey! Hey! You! You!
+I don't like your girlfriend!
+No way! No way!
+I think you need a new one!
+</pre>
+
+而這是我們的程式：
+
+<pre name="code" class="haskell:hs">
+import System.IO
+
+main = do
+    handle <- openFile "girlfriend.txt" ReadMode
+    contents <- hGetContents handle
+    putStr contents
+    hClose handle
+</pre>
+
+執行它，我們得到預期的結果：
+
+<pre name="code" class="plain">
+$ runhaskell girlfriend.hs
+Hey! Hey! You! You!
+I don't like your girlfriend!
+No way! No way!
+I think you need a new one!
+</pre>
+
+讓我們一行接著一行檢閱它。第一行僅是四個感嘆詞，以引起我們的注意。在第二行，Avril 告訴我們她並不喜歡我們當前的浪漫伴侶。第三行旨在強調不贊成這點、而第四行則建議我們應該尋找一個新的女朋友。
+
+讓我們也一行接著一行檢閱程式！我們的程式是以一個 <i>do</i> 區塊結合的數個 I/O 動作。在 <i>do</i> 區塊的第一行，我們注意到一個叫做 <code class="label function">openFile</code> 的新 function。這是它的型別簽名：`openFile :: FilePath -> IOMode -> IO Handle`。若是你大聲地將它讀出來，它說明：`openFile` 接收一個檔案路徑與一個 `IOMode`，並回傳一個將會打開一個檔案、並擁有封裝為其結果的檔案的關聯 handle
+的 I/O 動作。
+
+`FilePath` 僅是一個 `String` 的[型別別名](making-our-own-types-and-typeclasses#type-synonyms)，被簡單地定義成：
+
+<pre name="code" class="haskell:hs">
+type FilePath = String
+</pre>
+
+`IOMode` 是一個像這樣被定義的型別：
+
+<pre name="code" class="haskell:hs">
+data IOMode = ReadMode | WriteMode | AppendMode | ReadWriteMode
+</pre>
+
+<img src="img/file.png" alt="A FILE IN A CAKE!!!" style="float:left" />
+就像是我們可以表達代表一週日子的七個可能的值的型別，這個型別是一個表達我們要對我們打開的檔案做什麼的列舉。非常簡單。注意到這個型別是 `IOMode` 而非 `IO Mode`。`IO Mode` 會是一個擁有某個型別 `Mode` 的值作為其結果的 I/O 動作的型別，但 `IOMode` 僅是一個簡單的列舉。
+
+最後，它回傳一個將會以指定模式開啟指定檔案 I/O 動作。若是我們將這個動作綁定到某個東西上，我們就會得到一個 `Handle`。一個 `Handle` 型別的值代表我們檔案在哪裡。我們要使用這個 handle，以讓我們知道要讀取的是哪個檔案。讀取一個檔案、卻不將它綁定到一個 handle 是很愚蠢的，因為我們不能夠對這個檔案做任何事情。所以在我們的情況中，我們將這個 handle 綁定到 `handle`。
+
+在下一行，我們看到一個叫做 <code class="label function">hGetContents</code> 的 function。它接收一個 `Handle`，所以它知道要取得內容的檔案是哪個、並回傳一個 `IO String`──一個持有檔案內容作為其結果的 I/O 動作。這個 function 十分像是 `getContents`。唯一的不同點在於，`getContents` 會自動地從標準輸入（即是從終端機）進行讀取，而 `hGetContents` 則是接收一個告訴它「要讀取的檔案是哪個」的檔案 handle。除此之外，它們的運作原理相同。就如同 `getContents`，`hGetContents` 不會試圖立即讀取檔案、並將它儲存在記憶體中，而是會在需要時讀取它。這實在很酷，因為我們可以把 `contents` 看作是檔案的完整內容，但它其實沒有被載入到記憶體中。所以若是這是個很大的檔案，執行 `hGetContents` 將不會阻塞我們的記憶體，而是只在它需要的時候、從檔案中讀取它需要的東西。
+
+注意到用以識別檔案的 handle 與檔案內容的差別，它們在我們的程式中分別被綁定到 `handle` 與 `contents`。handle 僅是我們能藉此得知「我們的檔案是什麼」的東西。若是你將你的整個檔案系統想像成一本非常大的書，而每個檔案是書中的一章，handle 即是一個顯示你當前正在書中的哪一章讀取（或寫入）的書籤，而內容則是實際的章節。
+
+我們使用 `putStr contents` 來將內容印到標準輸出，接著執行 <code class="label function">hClose</code>──它接收一個 handle，並回傳一個關閉檔案的 I/O 動作。你必須在以 `openFile` 開啟檔案之後，自己關閉它。
+
+做到如此的另一種方式是使用 <code class="label function">withFile</code> function，其型別簽名為 `withFile :: FilePath -> IOMode -> (Handle -> IO a) -> IO a`。它接收一個檔案的路徑、一個 `IOMode`，以及一個接收一個 handle 並回傳某個 I/O 動作的 function。它所回傳的是一個將會開啟檔案、做某些我們想要對檔案做的事、並關閉它的 I/O 動作。封裝在被回傳的最終 I/O 動作中的結果，與我們給它的 function 回傳的 I/O 動作相同。這聽起來可能有一點複雜，但它其實很簡單，尤其是 lambda。這裡有個我們使用 `withFile` 重寫過的先前的範例：
+
+<pre name="code" class="haskell:hs">
+import System.IO
+
+main = do
+    withFile "girlfriend.txt" ReadMode (\handle -> do
+        contents <- hGetContents handle
+        putStr contents)
+</pre>
+
+如你所見，它非常近似於先前那段程式碼。`(\handle -> ... )` 為接收一個 handle 並回傳一個 I/O 動作的 function，且它通常像這樣──以一個 lambda──來做到。它必須取一個回傳 I/O 動作的 function，而不是僅取一個 I/O 動作來操作、然後關閉檔案的理由，是因為我們傳遞給它的 I/O 動作不會知道要操作的是哪個檔案。藉由這種方式，`withFile` 會開啟檔案、然後將 handle 傳遞給我們給定的 function。它會從這個 function 取回一個 I/O 動作，然後建立一個如同於此的 I/O 動作，只是它會在之後關閉檔案。以下是我們能夠如何建立我們自己的 `withFile` function：
+
+<pre name="code" class="haskell:hs">
+withFile' :: FilePath -> IOMode -> (Handle -> IO a) -> IO a
+withFile' path mode f = do
+    handle <- openFile path mode
+    result <- f handle
+    hClose handle
+    return result
+</pre>
+
+<img src="img/edd.png" alt="butter toast" style="float:right" />
+由於我們知道結果將會是一個 I/O 動作，所以我們可以僅以一個 <i>do</i> 開始。首先我們開啟檔案，並從其中取得一個 handle。然後，我們將 `handle` 應用到我們的 function 以取回完成所有工作的 I/O 動作。我們將這個動作綁定到 `result`、關閉 handle、然後執行 `return result`。藉由 `return` 封裝在我們從 `f` 取得的 I/O 動作中的結果，我們令我們的 I/O 動作封裝與我們從 `f handle` 取得的相同結果。所以若是 `f handle` 回傳一個將會從標準輸入讀取數行、將它寫入到一個檔案中、並封裝它讀取的行數作為結果的動作，假使我們以 `withFile'` 使用它，產生出來的 I/O 動作也會以讀取的行數作為結果。
+
+就像是我們有個運作地像是 `getContents`、只不過是針對一個特定檔案的 `hGetContents`，我們也有 <code class="label function">hGetLine</code>、<code class="label function">hPutStr</code>、<code class="label function">hPutStrLn</code>、<code class="label function">hGetChar</code>、等等。它們就如同它們沒有 h 的對應版本般運作，只是它們都接收一個 handle 作為參數，並操作它指定的檔案，而不是操作在標準輸入或標準輸出上。例如：`putStrLn` 是一個接收一個字串，並回傳一個將會在終端機印出字串與其後換行的 I/O 動作。`hPutStrLn` 接收一個 handle 與一個字串，並回傳一個將會將這個字串寫入到關聯到 handle 的檔案、然後在其後擺一個換行的 I/O 動作。同理，`hGetLine` 接收一個 handle，並回傳一個從它的檔案讀取一行的 I/O 動作。
+
+載入檔案、然後將它的內容視為字串是如此地常見，所以我們有這三個不錯的小 function 來讓我們的工作更加容易：
+
+<code class="label function">readFile</code> 的型別簽名為 `readFile :: FilePath -> IO String`。記住，`FilePath` 僅是一個 `String` 的化名。`readFile` 接收一個檔案路徑，並回傳一個將會讀取這個檔案（當然，惰性地）、並將其內容作為字串綁定到某個東西上的 I/O 動作。這通常比執行 `openFile` 並將它綁定到一個 handle、然後執行 `hGetContents` 來得方便。以下是我們如何以 `readFile` 來寫下我們先前的範例：
+
+<pre name="code" class="haskell:hs">
+import System.IO
+
+main = do
+    contents <- readFile "girlfriend.txt"
+    putStr contents
+</pre>
+
+因為我們沒有取得用以識別我們檔案的 handle，因此我們無法手動關閉它，所以當我們使用 `readFile` 的時候，Haskell 會為我們做這件事。
+
+<code class="label function">writeFile</code> 的型別為 `writeFile :: FilePath -> String -> IO ()`。它取一個檔案路徑以及要寫到這個檔案的字串，並回傳一個將會進行寫入的 I/O 動作。若是這個檔案已經存在，它就會在寫入前被清空。以下即是如何將 <i>girlfriend.txt</i> 轉成大寫的版本，並將它寫入到 <i>girlfriendcaps.txt</i>：
+
+<pre name="code" class="haskell:hs">
+import System.IO
+import Data.Char
+
+main = do
+    contents <- readFile "girlfriend.txt"
+    writeFile "girlfriendcaps.txt" (map toUpper contents)
+</pre>
+
+<pre name="code" class="plain">
+$ runhaskell girlfriendtocaps.hs
+$ cat girlfriendcaps.txt
+HEY! HEY! YOU! YOU!
+I DON'T LIKE YOUR GIRLFRIEND!
+NO WAY! NO WAY!
+I THINK YOU NEED A NEW ONE!
+</pre>
+
+<code class="label function">appendFile</code> 的型別簽名就如同 `writeFile`，不過若是檔案已經存在，`appendFile` 並不會將檔案清空，而是把東西附加上去。
+
+讓我們假定我們有個每一行都有一個我們必須要做的任務的檔案 <i>todo.txt</i>。現在讓我們建立一個從標準輸入取一行、並將它加到待辦清單的程式。
+
+<pre name="code" class="haskell:hs">
+import System.IO
+
+main = do
+    todoItem <- getLine
+    appendFile "todo.txt" (todoItem ++ "\n")
+</pre>
+
+<pre name="code" class="plain">
+$ runhaskell appendtodo.hs
+Iron the dishes
+$ runhaskell appendtodo.hs
+Dust the dog
+$ runhaskell appendtodo.hs
+Take salad out of the oven
+$ cat todo.txt
+Iron the dishes
+Dust the dog
+Take salad out of the oven
+</pre>
+
+我們需要將 `"\n"` 加到每一行的結尾，因為 `getLine` 並不會給我們在結尾的換行字元。
+
+喔，還有一件事。我們談過執行 `contents <- hGetContents handle` 不會導致整個檔案立即被讀取、並儲存在記憶體中。這即是惰性 I/O，所以這樣做：
+
+<pre name="code" class="haskell:hs">
+main = do
+    withFile "something.txt" ReadMode (\handle -> do
+        contents <- hGetContents handle
+        putStr contents)
+</pre>
+
+實際上就像是連接一條從檔案到輸出的管道（pipe）。就如同你可以將 list 想成串流（stream），你也可以將檔案想成串流。這將會一次讀取一行，並將它印到終端機上。所以你可能會問，那麼這條管子有多寬呢？硬碟多久會被存取一次呢？嗯，對於文字檔，預設的緩衝通常是行緩衝（line-buffering）。這代表檔案要被一次讀取的最小部分為一行。這就是為什麼在這種情況中，它實際上是讀取一行、將它印到輸出、讀取下一行、印出它、以此類推。對於二元（binary）檔，預設的緩衝通常是區塊緩衝（block-buffering）。這代表它會一個 chunk 接著一個 chunk 讀取檔案。chunk 大小是你的作業系統覺得不錯的大小。
+
+你可以使用 `hSetBuffering` function 來控制緩衝究竟是如何完成的。它取一個 handle 與一個 `BufferMode`，並回傳一個將會設定緩衝的 I/O 動作。`BufferMode` 是一個簡單的列舉資料型別，它可以持有的可能值為：`NoBuffering`、`LineBuffering` 或 `BlockBuffering (Maybe Int)`。`Maybe Int` 是以位元組（bytes）為單位，代表 chunk 大小應該多大。若是它是 `Nothing`，則由作業系統決定 chunk 大小。`NoBuffering` 代表它將會一次讀取一個字元。`NoBuffering` 作為緩衝模式通常很爛，因為它必須多次存取硬碟。
+
+以下是我們先前那段程式碼，只是它不是一行接著一行讀取，而是以 2048 個位元組的 chunk 讀取整個檔案。
+
+<pre name="code" class="haskell:hs">
+main = do
+    withFile "something.txt" ReadMode (\handle -> do
+        hSetBuffering handle $ BlockBuffering (Just 2048)
+        contents <- hGetContents handle
+        putStr contents)
+</pre>
+
+若是我們要最小化硬碟存取、或是當我們的檔案實際上是個緩慢的網路資源時，以比較大的 chunk 讀取檔案是有幫助的。
+
+我們也可以使用 <code class="label function">hFlush</code>，它是個接收一個 handle 並回傳一個將會刷新（flush）handle 關聯的檔案緩衝的 I/O 動作。當我們進行行緩衝時，緩衝會在每一行後刷新。當我們進行區塊緩衝時，它會在我們讀取一個 chunk 之後刷新。它在關閉一個 handle 之後也會被刷新。這代表當我們遇到一個換行字元時，讀取（或寫入）機制會回報到目前為止的所有資料。但我們可以使用 `hFlush` 來強制回報到目前為止已經被讀取的資料。刷新之後，資料對同時在執行的其它程式就是可用的了。
+
+像這樣思考讀取一個區塊緩衝的檔案：你的馬桶會在它擁有一加崙的水之後自己沖水（flush）。所以你開始灌水，且一旦達到一加崙，這些水就會自動被沖掉，而迄今你灌在水中的資料就被讀取到了。但你也可以藉由按下馬桶上的按鈕來沖馬桶。這會令馬桶沖水，而所有在馬桶之中的水（資料）就被讀到了。如果你不曾注意到，手動沖馬桶是個 `hFlush` 的比喻。這以程式比喻的標準來看，並不是個非常好的類比，但我想要一個可以被沖水的現實世界物件作為妙語。
+
+我們已經建立一個程式以將一個新項目加到我們在 <i>todo.txt</i> 中的待辦清單，現在讓我們建立一個程式來移除一個項目。我要貼上程式碼，然後我們要一同檢閱程式，因而你會看到它非常簡單。我們要使用一些來自 `System.Directory` 的新 function，以及來自 `System.IO` 的一個新 function，但它們全都會被解釋。
+
+總而言之，以下是用以從 <i>todo.txt</i> 移除一個項目的程式：
+
+<pre name="code" class="haskell:hs">
+import System.IO
+import System.Directory
+import Data.List
+
+main = do
+    handle <- openFile "todo.txt" ReadMode
+    (tempName, tempHandle) <- openTempFile "." "temp"
+    contents <- hGetContents handle
+    let todoTasks = lines contents
+        numberedTasks = zipWith (\n line -> show n ++ " - " ++ line) [0..] todoTasks
+    putStrLn "These are your TO-DO items:"
+    putStr $ unlines numberedTasks
+    putStrLn "Which one do you want to delete?"
+    numberString <- getLine
+    let number = read numberString
+        newTodoItems = delete (todoTasks !! number) todoTasks
+    hPutStr tempHandle $ unlines newTodoItems
+    hClose handle
+    hClose tempHandle
+    removeFile "todo.txt"
+    renameFile tempName "todo.txt"
+</pre>
+
+首先，我們開啟以讀取模式 <i>todo.txt</i>，並將它的 handle 綁定到 `handle`。
+
+接下來，我們使用來自於 `System.IO`、我們先前未曾見過的 function──<code class="label function">openTempFile</code>。其名稱不言自明。它取一個暫存資料夾的路徑、與一個檔案的樣板（template）名稱，並開啟一個暫存檔。我們使用 `"."` 作為暫存資料夾，因為 `.` 在幾乎任何作業系統都代表當前的資料夾。我們使用 `"temp"` 作為暫存檔的樣板名稱，這意味著暫存檔案將會被命名為 <i>temp</i> 加上一些隨機字元。它回傳一個建立暫存檔的 I/O 動作，且在這個 I/O 動作中的結果是一對值：暫存檔的名稱與一個 handle。我們可以開啟一個叫做 <i>todo2.txt</i> 或是其它類似於此的名稱的普通檔案，但使用 `openTempFile` 以讓你知道你大概不會覆寫任何東西是比較好的習慣。
+
+我們不使用 `getCurrentDirectory` 來取得當前資料夾、然後將它傳遞給 `openTempFile`，而是僅將 `"."` to `openTempFile` 的理由，是因為 `.` 在 unix-like 系統與 Windows 指的都是當前的資料夾。
+
+接下來，我們將 <i>todo.txt</i> 的內容綁定到 `contents`。然後，將這個字串切割成字串的 list，一個字串代表一行。所以 `todoTasks` 現在是像 `["Iron the dishes", "Dust the dog", "Take salad out of the oven"]` 這樣的東西。我們以接收一個數字──像是 3、以及一個字串──像是 `"hey"`，並回傳 `"3 - hey"` 的 function，將從 0 開始的數字與這個 list 扣在一起，所以 `numberedTasks` 為 `["0 - Iron the dishes", "1 - Dust the dog" ...`。我們以 `unlines` 將這個字串 list 結合成一個以換行分隔的單一字串，並將這個字串印到終端機上。注意到，作為這樣做的替代，我們也可以執行 `mapM putStrLn numberedTasks`。
+
+我們詢問使用者它想要刪除的是哪一個，並等待他輸入一個數字。讓我們假定他想要刪除 1 號，其為 `Dust the dog`，所以他輸入 1。`numberString` 現在是 `"1"`，且因為我們想要一個數字、而不是個字串，所以我們對它執行 `read` 以得到 `1`，並將它綁定到 `number`。
+
+記得來自於 `Data.List` 的 `delete` 與 `!!` function。`!!` 回傳一個 list 中帶有某個索引值的元素；`delete` 刪除在 list 中的一個元素的首次出現之處，並回傳沒有這個元素的新 list。`(todoTasks !! number)`（`number` 目前是 `1`）回傳 `"Dust the dog"`。我們將去除 `"Dust the dog"` 第一次出現之處的 `todoTasks` 綁定到 `newTodoItems`，然後在將它寫入我們開啟的暫存檔之前，將它以 `unlines` 結合成一個單一字串。舊的檔案當前未被改變，而暫存檔包含舊的檔案包含的每一行，除了我們刪掉的那行以外。
+
+在我們關閉原始檔案與暫存檔案之後，我們以 <code class="label function">removeFile</code>──如你所見，它接收一個檔案路徑，並移除它──刪除原始的檔案。在刪除舊的 <i>todo.txt</i> 之後，我們使用 <code class="label function">renameFile</code> 以將暫存檔重新命名為 <i>todo.txt</i>。要小心，`removeFile` 與 `renameFile`（順帶一提，它們都在 `System.Directory` 中）是取檔案路徑作為其參數，而非 handle。
+
+僅此而已！我們可以用更少行做到這件事，但我們要非常小心不要覆寫任何存在的檔案，並禮貌地請求作業系統告訴我們可以在哪裡擺我們的暫存檔。讓我們試看看吧！
+
+<pre name="code" class="plain">
+$ runhaskell deletetodo.hs
+These are your TO-DO items:
+0 - Iron the dishes
+1 - Dust the dog
+2 - Take salad out of the oven
+Which one do you want to delete?
+1
+
+$ cat todo.txt
+Iron the dishes
+Take salad out of the oven
+
+$ runhaskell deletetodo.hs
+These are your TO-DO items:
+0 - Iron the dishes
+1 - Take salad out of the oven
+Which one do you want to delete?
+0
+
+$ cat todo.txt
+Take salad out of the oven
+</pre>
 
 ## <a name="command-line-arguments">命令列引數</a>
 
