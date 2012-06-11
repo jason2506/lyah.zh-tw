@@ -97,4 +97,4 @@ class: chapters
 
 本教學翻譯自 [Learn You a Haskell for Great Good!](http://learnyouahaskell.com/chapters)，採用 [CC BY-NC-SA 3.0](http://creativecommons.org/licenses/by-nc-sa/3.0/deed.zh_TW) 授權釋出。
 
-如果發現任何錯譯的部份，或是想要協助翻譯的進行，歡迎到 [GitHub](https://github.com/jason2506/learn-you-a-haskell.zh-tw) 提報 issue 給我們，或是 fork 我們的專案 :)
+如果發現任何錯譯的部份，或是想要協助翻譯的進行，歡迎到 [GitHub](https://github.com/jason2506/lyah.zh-tw) 提報 issue 給我們，或是 fork 我們的專案 :)
