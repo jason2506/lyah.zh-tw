@@ -890,6 +890,206 @@ Take salad out of the oven
 
 ## <a name="command-line-arguments">命令列引數</a>
 
+<img src="img/arguments.png" alt="COMMAND LINE ARGUMENTS!!! ARGH" style="float:right" />
+若是你想要建立一個執行在終端機上的腳本或應用程式，處理命令列引數（command line argument）是十分必要的。幸運地，Haskell 的標準函式庫有個取得程式命令列引數的好方法。
+
+在前一節，我們建立了一個用以將待辦事項加到我們的待辦清單中的程式、以及一個用以刪除待辦事項的程式。我們採取的方式有兩個問題。第一個是在我們的程式碼中，我們將待辦清單的檔案名稱寫死了。我們僅決定檔案將會被命名為 <i>todo.txt</i>，且使用者永遠不會有處理多個待辦清單的需求。
+
+一種解決這個問題的方式，是每次都詢問使用者他們想要用來當做待辦清單的是哪個檔案。這行得通，但不是非常好，因為它要求使用者去執行程式、等待程式詢問、然後才將之告訴程式。這被稱為一個互動式程式，而互動式命令列程式的困難之處在於──若是你想要自動執行這個程式，像是用一個批次（batch）腳本呢？建立一個與一個程式互動的批次腳本，是比建立一個僅呼叫一個或多個程式的批次腳本還困難的。
+
+這就是為什麼讓使用者在他們執行程式的時候，告訴程式他們要的是什麼、而不是讓程式在執行時詢問使用者，有時候是比較好的。要讓使用者在他們執行程式的時候，告訴它他們想要它去做什麼，有什麼比透過命令列引數更好的方法呢！
+
+`System.Environment` 模組有兩個很酷的 I/O 動作。一個是 <code class="label function">getArgs</code>，它的型別為 `getArgs :: IO [String]`，並且是個將會取得被執行程式的引數、並以帶著引數的 list 作為其包含結果的 I/O 動作。<code class="label function">getProgName</code> 型別為 `getProgName :: IO String`，且是個包含程式名稱的 I/O 動作。
+
+這裡有個示範它們兩個如何運作的小程式：
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import Data.List
+
+main = do
+   args <- getArgs
+   progName <- getProgName
+   putStrLn "The arguments are:"
+   mapM putStrLn args
+   putStrLn "The program name is:"
+   putStrLn progName
+</pre>
+
+我們將 `getArgs` 與 `progName` 綁定到 `args` 與 `progName` 上。我們印出 `The arguments are:`，然後我們對每個在 `args` 中的引數執行 `putStrLn`。最後，我們也印出程式名稱。讓我們將它編譯成 `arg-test`。
+
+<pre name="code" class="plain">
+$ ./arg-test first second w00t "multi word arg"
+The arguments are:
+first
+second
+w00t
+multi word arg
+The program name is:
+arg-test
+</pre>
+
+很好。有了這些知識，你就可以創造一些很酷的命令列應用程式。事實上，就讓我們繼續前進、並建立一個吧。在前一節，我們為了新增任務建立了一個獨立的程式，並為了刪除它們建立了一個獨立的程式。現在，我們要將之結合成一個程式，而它所做的將會視命令列引數而定。我們也要讓它可以操作在不同的檔案上，而不是僅有 <i>todo.txt</i>。
+
+我們要簡單地稱它為 <i>todo</i>，且它將能夠去做（哈哈！<span class="note">〔譯註：「去做」即為 to do，作者大概覺得這很幽默。〕</span>）三件不同的事：
+
+* 檢視任務
+* 新增任務
+* 刪除任務
+
+我們當前並不打算過於關心可能的不良輸入。
+
+我們的程式使得，若是我們想要加入 `Find the magic sword of power` 這個任務到檔案 <i>todo.txt</i> 中時，我們必須在我們的終端機中敲入 `todo add todo.txt "Find the magic sword of power"`。為了檢視任務，我們要執行 `todo view todo.txt`；而為了刪除索引值 2 的任務，我們要執行 `todo remove todo.txt 2`。
+
+我們將藉由建立一個 dispatch 關連列表開始。它會是一個命令列引數作為 key、function 作為它們對應的 value 的簡單的關聯列表。所有 function 的型別將會是 `[String] -> IO ()`。它們會取引數 list 作為參數，並回傳一個進行檢視、新增、刪除等等的 I/O 動作。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.Directory
+import System.IO
+import Data.List
+
+dispatch :: [(String, [String] -> IO ())]
+dispatch =  [ ("add", add)
+            , ("view", view)
+            , ("remove", remove)
+            ]
+</pre>
+
+我們尚未定義 `main`、`add`、`view` 與 `remove`，所以讓我們以 `main` 開始：
+
+<pre name="code" class="haskell:hs">
+main = do
+    (command:args) <- getArgs
+    let (Just action) = lookup command dispatch
+    action args
+</pre>
+
+首先，我們取得引數、並將它們綁定到 `(command:args)`。若是你還記得模式匹配，這意謂著第一個引數將會被綁定到 `command`，而剩下的部份會被綁定到 `args`。若是我們像 `todo add todo.txt "Spank the monkey"` 這樣呼叫我們的程式，`command` 將會是 `"add"`，而 `args` 將會是 `["todo.xt", "Spank the monkey"]`。
+
+在下一行，我們在 dispatch list 中尋找我們的命令。因為 `"add"` 指到 `add`，所以我們取得 `Just add` 作為結果。我們再次使用模式匹配，以從 `Maybe` 取出我們的 function。若是我們的命令不在 dispatch list 中會發生什麼呢？那麼 `lookup` 將會回傳 `Nothing`，但我們表明我們不會太過關心失敗的情況，所以模式匹配將會失敗，而我們的程式就會鬧彆扭。
+
+最後，我們以引數 list 的剩餘部分呼叫我們的 `action` function。這將會回傳一個新增一個項目、顯示一個項目清單、或是刪除一個項目的 I/O 動作，且因為這個動作是 `main` <i>do</i> block 的一部分，所以它將會被執行。若是我們遵循我們到目前為止的具體例子，且我們的 `action` function 為 `add`，它將會以 `args`（即 `["todo.txt", "Spank the monkey"]`）呼叫，並回傳一個將 `Spank the monkey` 新增到 <i>todo.txt</i> 的 I/O 動作。
+
+很好！現在所剩下的，就是去實作 `add`、`view` 與 `remove`。讓我們以 `add` 開始：
+
+<pre name="code" class="haskell:hs">
+add :: [String] -> IO ()
+add [fileName, todoItem] = appendFile fileName (todoItem ++ "\n")
+</pre>
+
+若是我們像 `todo add todo.txt "Spank the monkey"` 這樣呼叫我們的程式，`"add"` 將會在 `main` 區塊中的第一個模式匹配中被綁定到 `command`，而 `["todo.txt", "Spank the monkey"]` 將會被傳遞到我們從 dispatch list 取出的 function 中。因此，由於我們現在並不處理不良輸入，所以我們就立即以這兩個元素針對 list 進行模式匹配，並回傳一個將這行附加到檔案結尾、帶著一個換行字元的 I/O 動作。
+
+接著，讓我們實作清單檢視功能。若是我們想要檢視一個檔案中的項目，我們就會執行 `todo view todo.txt`。所以在第一個模式匹配中，`command` 將會是 `"view"`，而 `args` 將會是 `["todo.txt"]`。
+
+<pre name="code" class="haskell:hs">
+view :: [String] -> IO ()
+view [fileName] = do
+    contents <- readFile fileName
+    let todoTasks = lines contents
+        numberedTasks = zipWith (\n line -> show n ++ " - " ++ line) [0..] todoTasks
+    putStr $ unlines numberedTasks
+</pre>
+
+在僅有刪除任務的程式中，我們在顯示任務以便使用者可以選擇一個來刪除的時候，已經做了幾乎一樣的事情，只是在這裡我們僅顯示任務。
+
+最後，我們要實作 `remove`。這會十分相似於僅有刪除任務的程式，所以若是你不瞭解在這裡刪除一個項目是如何運作的，就看看這個程式的解釋吧。主要的不同在於，我們並不把 <i>todo.txt</i> 寫死，而是作為一個引數來取得它。我們也不會提示使用者要刪除的任務編號，我們會作為引數來取得它。
+
+<pre name="code" class="haskell:hs">
+remove :: [String] -> IO ()
+remove [fileName, numberString] = do
+    handle <- openFile fileName ReadMode
+    (tempName, tempHandle) <- openTempFile "." "temp"
+    contents <- hGetContents handle
+    let number = read numberString
+        todoTasks = lines contents
+        newTodoItems = delete (todoTasks !! number) todoTasks
+    hPutStr tempHandle $ unlines newTodoItems
+    hClose handle
+    hClose tempHandle
+    removeFile fileName
+    renameFile tempName fileName
+</pre>
+
+我們基於 `fileName` 開啟檔案，並開啟一個暫存檔案、刪除使用者想要刪除的索引值的那行、將之寫入到暫存檔、移除原始檔案、並將暫存檔重新命名回 `fileName`。
+
+以下即是這個光彩奪目的完整程式！
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.Directory
+import System.IO
+import Data.List
+
+dispatch :: [(String, [String] -> IO ())]
+dispatch =  [ ("add", add)
+            , ("view", view)
+            , ("remove", remove)
+            ]
+
+main = do
+    (command:args) <- getArgs
+    let (Just action) = lookup command dispatch
+    action args
+
+add :: [String] -> IO ()
+add [fileName, todoItem] = appendFile fileName (todoItem ++ "\n")
+
+view :: [String] -> IO ()
+view [fileName] = do
+    contents <- readFile fileName
+    let todoTasks = lines contents
+        numberedTasks = zipWith (\n line -> show n ++ " - " ++ line) [0..] todoTasks
+    putStr $ unlines numberedTasks
+
+remove :: [String] -> IO ()
+remove [fileName, numberString] = do
+    handle <- openFile fileName ReadMode
+    (tempName, tempHandle) <- openTempFile "." "temp"
+    contents <- hGetContents handle
+    let number = read numberString
+        todoTasks = lines contents
+        newTodoItems = delete (todoTasks !! number) todoTasks
+    hPutStr tempHandle $ unlines newTodoItems
+    hClose handle
+    hClose tempHandle
+    removeFile fileName
+    renameFile tempName fileName
+</pre>
+
+<img src="img/salad.png" alt="fresh baked salad" style="float:left" />
+總結我們的解法：我們建立一個從命令映射到接收某些命令列引數、並回傳一個 I/O 動作的 function 的 dispatch 關聯。我們發現命令為何，並基於此、從 dispatch list 取得適合的 function。我們以剩下的命令列引數呼叫這個 function，並取回一個將會做適當操作的 I/O 動作，然後就執行這個動作！
+
+在其他語言中，我們也許會以一個很大的 switch case 敘述或什麼的來實作它，但使用高階函數則允許我們要求 dispatch list 給我們合適的 function，然後要求這個 function 對於某些命令列引數給我們一個 I/O 動作。
+
+讓我們試試我們的應用程式！
+
+<pre name="code" class="plain">
+$ ./todo view todo.txt
+0 - Iron the dishes
+1 - Dust the dog
+2 - Take salad out of the oven
+
+$ ./todo add todo.txt "Pick up children from drycleaners"
+
+$ ./todo view todo.txt
+0 - Iron the dishes
+1 - Dust the dog
+2 - Take salad out of the oven
+3 - Pick up children from drycleaners
+
+$ ./todo remove todo.txt 2
+
+$ ./todo view todo.txt
+0 - Iron the dishes
+1 - Dust the dog
+2 - Pick up children from drycleaners
+</pre>
+
+另一個關於此的酷事是，加入額外功能是很容易的。只要在 dispatch 關聯列表中加入一個進入點（entry），並實作對應的 function！作為練習，你可以試著實作一個 `bump` function，其將會接收一個檔案與一個任務編號，並回傳一個把這個任務擠到待辦清單頂端的 I/O 動作。
+
+你也可以藉由建立一個僅回報有個錯誤的 I/O 動作（假定為 `errorExit :: IO ()`）、然後檢查可能的錯誤輸入、若是有錯誤輸入，便執行錯誤回報的 I/O 動作，讓這個程式在不良輸入的情況中（舉例來說，若是某個人執行 `todo UP YOURS HAHAHAHA`）失敗得更優雅一點。另一種方式是使用例外，我們不久就會遇到它。
+
 ## <a name="randomness">隨機性</a>
 
 ## <a name="bytestrings">Bytestrings</a>
