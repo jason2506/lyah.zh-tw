@@ -1092,6 +1092,285 @@ $ ./todo view todo.txt
 
 ## <a name="randomness">隨機性</a>
 
+<img src="img/random.png" alt="this picture is the ultimate source of randomness and wackiness" style="float:right" />
+很多時候，你都需要在寫程式的時候取得一些隨機資料。或許你正在寫一個需要擲骰子的遊戲，或者你需要產生一些測試資料來測試你的程式。程式撰寫的時候有許多隨機資料的用途。嗯，事實上，是假隨機（pseudo-random），因為我們所知道的唯一真實的隨機性（randomness）來源是在一輛獨輪車上、一隻手拿著起司、另一隻手抓著屁股的一隻猴子上<span class="note">〔譯註：[無限猴子定理](http://zh.wikipedia.org/wiki/%E7%84%A1%E9%99%90%E7%8C%B4%E5%AD%90%E5%AE%9A%E7%90%86)〕</span>。在這一節，我們要看看如何使 Haskell 產生看似隨機的資料。
+
+在許多其它程式語言中，你會有個給予你某個隨機數的 function。每當你呼叫這個 function，你就取回一個（但願是）不同的隨機數。Haskell 又如何呢？嗯，還記得，Haskell 是個純函數式語言。這所代表的是它擁有參考透明性。這所代表的是，若是給予相同的參數兩次，一個 function 必須產生相同的結果兩次。這確實很酷，因為它允許我們以不同方式思考程式，且它讓我們延緩求值、直到我們真的需要它為止。若是我呼叫一個 function，我可以確定它不會在給我結果前做任何有趣的事情。重要的只有它的結果。然而，這使得它在取得隨機數時有些棘手。若是我有個像這樣的 function：
+
+<pre name="code" class="haskell:hs">
+randomNumber :: (Num a) => a
+randomNumber = 4
+</pre>
+
+這並不如一個隨機數 function 一般地有用，因為它將總是回傳 `4`，即使我能夠向你保證：因為我使用一個骰子來決定這個數字，所以這個 4 是完全隨機的。
+
+其它語言是如何建立看似隨機的數字呢？嗯，它會從你的電腦取得不同的資訊，像是當前時間、你的滑鼠移動的多寡與位置、以及你在你的電腦後面製造出來的是哪種噪音，並基於此給予一個看起來非常隨機的數字。這些因子（隨機性）的組合可能在任何特定時刻都不同，所以你就得到一個不同的隨機數。
+
+阿。所以在 Haskell 中，若是我們建立一個取隨機性作為其參數、並基於此回傳某個數字（或是其他資料型別）的 function，我們就可以產生一個隨機數了。
+
+進入到 `System.Random` 模組。它擁有滿足我們為了隨機性所需的所有 function。讓我們來研究它輸出的其中一個 function，即 <code class="label function">random</code>。這是它的型別：`random :: (RandomGen g, Random a) => g -> (a, g)`。哇！在這裡的這個型別宣告中有一些新的 typeclass！<code class="label class">RandomGen</code> typeclass 代表可以作為隨機性來源的型別。<code class="label class">Random</code> typeclass 代表可以具有隨機值的東西。一個布林值可以具有一個隨機值，即 `True` 或 `False`。一個數字也可以有許多不同的隨機值。一個 function 可以具有一個隨機值嗎？我不這麼認為，或許不行！若是我們試著將 `random` 的型別宣告翻譯成中文，我們得到的結果就像是：它接收一個隨機產生器（即是我們的隨機性來源），並回傳一個隨機值與一個新的隨機產生器。為什麼它不但回傳一個隨機值，而且還會回傳一個新的產生器呢？嗯，我們待會就會看到。
+
+為了要使用我們的 `random` function，我們必須得到其中一個隨機產生器。`System.Random` 模組輸出一個很酷的型別，即 <code class="label type">StdGen</code>，其為一個 `RandomGen` typeclass 的實體。我們可以手動建立一個 `StdGen`，或者我們可以要求系統給我們一個基於多種隨機因子的 `StdGen`。
+
+要手動建立一個隨機產生器，就使用 <code class="label function">mkStdGen</code> function 吧。它的型別為 `mkStdGen :: Int -> StdGen`。它取一個整數，並基於此給予我們一個隨機產生器。好，那麼讓我們串聯使用 `random` 與 `mkStdGen` 來取得一個（幾乎不隨機的）數字。
+
+<pre name="code" class="haskell:ghci">
+ghci> random (mkStdGen 100)
+</pre>
+
+<pre name="code" class="plain">
+&lt;interactive&gt;:1:0:
+    Ambiguous type variable `a' in the constraint:
+      `Random a' arising from a use of `random' at &lt;interactive&gt;:1:0-20
+    Probable fix: add a type signature that fixes these type variable(s)
+</pre>
+
+這是什麼？阿，對，`random` function 可以回傳任何為 `Random` typeclass 一員的型別的值，所以我們必須告訴 Haskell 我們想要的是哪種型別。也別忘了它回傳的是一對 pair 中的一個回傳值與一個隨機產生器。
+
+<pre name="code" class="haskell:ghci">
+ghci> random (mkStdGen 100) :: (Int, StdGen)
+(-1352021624,651872571 1655838864)
+</pre>
+
+終於！一個看似隨機的數字！tuple 的第一項是我們的數字，而第二項我們新的隨機產生器的文字表示。若是我們再次以相同的隨機產生器呼叫 `random` 會發生什麼呢？
+
+<pre name="code" class="haskell:ghci">
+ghci> random (mkStdGen 100) :: (Int, StdGen)
+(-1352021624,651872571 1655838864)
+</pre>
+
+當然。以相同的參數得到相同的結果。所以，讓我們試著給它一個不同的隨機產生器作為參數。
+
+<pre name="code" class="haskell:ghci">
+ghci> random (mkStdGen 949494) :: (Int, StdGen)
+(539963926,466647808 1655838864)
+</pre>
+
+很好，很酷，太好了，一個不同的數字。我們可以使用型別註釋來從這個 function 取回不同型別的值。
+
+<pre name="code" class="haskell:ghci">
+ghci> random (mkStdGen 949488) :: (Float, StdGen)
+(0.8938442,1597344447 1655838864)
+ghci> random (mkStdGen 949488) :: (Bool, StdGen)
+(False,1485632275 40692)
+ghci> random (mkStdGen 949488) :: (Integer, StdGen)
+(1691547873,1597344447 1655838864)
+</pre>
+
+讓我們建立一個模擬丟三次硬幣的 function。若是 `random` 不與隨機值一起回傳一個新的產生器，我們就必須令這個 function 接收三個隨機產生器作為參數，然後回傳每一個產生器的硬幣投擲結果。但這聽起來是錯的，因為若是一個產生器可以建立一個 `Int` 型別（其可以具有大量不同的值）的隨機值，它就應該能夠產生三個擲硬幣的結果（其恰好具有八種組合）。所以這就是 `random` 與值一同回傳一個新的產生器確實派上用場之處了。
+
+我們要以一個簡單的 `Bool` 來表示一個硬幣。`True` 為反面，`False` 為正面。
+
+<pre name="code" class="haskell:hs">
+threeCoins :: StdGen -> (Bool, Bool, Bool)
+threeCoins gen =
+    let (firstCoin, newGen) = random gen
+        (secondCoin, newGen') = random newGen
+        (thirdCoin, newGen'') = random newGen'
+    in  (firstCoin, secondCoin, thirdCoin)
+</pre>
+
+我們以我們得到的產生器作為參數呼叫 `random`，以得到一枚硬幣與一個新的產生器。然後我們再次呼叫它──只是這時是以新的產生器呼叫──以得到第二枚硬幣。對於第三枚硬幣亦同。假使我們每次都以相同的產生器呼叫它，所有的硬幣都會有相同的值，而我們只能夠得到 `(False, False, False)` 或是 `(True, True, True)` 作為結果。
+
+<pre name="code" class="haskell:ghci">
+ghci> threeCoins (mkStdGen 21)
+(True,True,True)
+ghci> threeCoins (mkStdGen 22)
+(True,False,True)
+ghci> threeCoins (mkStdGen 943)
+(True,False,True)
+ghci> threeCoins (mkStdGen 944)
+(True,True,True)
+</pre>
+
+注意到我們不必去做 `random gen :: (Bool, StdGen)`。這是因為我們已經在 function 的型別宣告中表明我們想要布林值。這就是為什麼在這種情況中，Haskell 能夠推論我們想要一個布林值。
+
+所以若是我們想要擲四個硬幣呢？或是五個？嗯，有個叫做 <code class="label function">randoms</code> 的 function，其接收一個產生器並基於這個產生器回傳一個無窮的值的序列。
+
+<pre name="code" class="haskell:ghci">
+ghci> take 5 $ randoms (mkStdGen 11) :: [Int]
+[-1807975507,545074951,-1015194702,-1622477312,-502893664]
+ghci> take 5 $ randoms (mkStdGen 11) :: [Bool]
+[True,True,True,True,False]
+ghci> take 5 $ randoms (mkStdGen 11) :: [Float]
+[7.904789e-2,0.62691015,0.26363158,0.12223756,0.38291094]
+</pre>
+
+為什麼 `randoms` 不跟著 list 一起回傳一個新產生器呢？我們可以像這樣十分輕易地實作 `randoms` function：
+
+<pre name="code" class="haskell:hs">
+randoms' :: (RandomGen g, Random a) => g -> [a]
+randoms' gen = let (value, newGen) = random gen in value:randoms' newGen
+</pre>
+
+一個遞迴定義。我們從當前的產生器取得一個隨機值與一個新的產生器，然後建立一個以這個值作為它的 head、以基於新的產生器的隨機數字作為它的 tail 的 list。因為我們有可能需要能夠產生無限個數字，所以我們無法丟回新的隨機產生器。
+
+我們可以像這樣建立一個產生有限的數字串流以及一個新的產生器的 function：
+
+<pre name="code" class="haskell:hs">
+finiteRandoms :: (RandomGen g, Random a, Num n) => n -> g -> ([a], g)
+finiteRandoms 0 gen = ([], gen)
+finiteRandoms n gen =
+    let (value, newGen) = random gen
+        (restOfList, finalGen) = finiteRandoms (n-1) newGen
+    in  (value:restOfList, finalGen)
+</pre>
+
+再一次的，一個遞迴定義。我們表明，若是我們想要 0 個數字，我們就回傳一個空的 list 和我們給予的產生器。對於其它任何數量的隨機值，我們首先取得一個隨機數與一個新的產生器。這將會是 head。然後我們表明，tail 將會是以新產生器產生的 <i>n - 1</i> 個數字。接著我們回傳 head 接上 list 的剩餘部分、以及我們從 <i>n - 1</i> 個隨機數得到的最後的產生器。
+
+若是我們想要一個在某個範圍中的隨機值呢？到目前為止的所有隨機整數不是很大就是很小。若是我們想要丟一顆骰子呢？嗯，我們為了這個目的而使用 <code class="label function">randomR</code>。它的型別為 `randomR :: (RandomGen g, Random a) :: (a, a) -> g -> (a, g)`，代表它有點像是 `random`，只是它取一對設定上限與下限的值的 pair 作為它的第一個參數，而產生的最終值將會落在這個範圍中。
+
+<pre name="code" class="haskell:ghci">
+ghci> randomR (1,6) (mkStdGen 359353)
+(6,1494289578 40692)
+ghci> randomR (1,6) (mkStdGen 35935335)
+(3,1250031057 40692)
+</pre>
+
+還有個 <code class="label function">randomRs</code>，其產生一個在我們定義區間中的隨機值串流。看看吧：
+
+<pre name="code" class="haskell:ghci">
+ghci> take 10 $ randomRs ('a','z') (mkStdGen 3) :: [Char]
+"ndkxbvmomg"
+</pre>
+
+很好，看起來像是一個超級機密的密碼之類的。
+
+或許你會自問，這一節有什麼無論如何都必須以 I/O 來做的嗎？我們迄今都還沒做任何有關 I/O 的事。嗯，到目前為止我們總是以某個隨意的整數來手動建立我們的隨機數產生器。問題是，若是我們在我們的真實程式這樣做，它們將總是回傳相同的隨機數，這對我們來說並不是很好。這即是 `System.Random` 為什麼要提供 <code class="label function">getStdGen</code> I/O 動作，其型別為 `IO StdGen`。當你的程式開始時，它會跟系統要一個好的隨機數產生器，並將它儲存在一個所謂的全域（global）產生器中。`getStdGen` 會在你將它綁定到某個東西上的時候，替你取得全域隨機產生器。
+
+以下是個產生隨機字串的簡單程式：
+
+<pre name="code" class="haskell:hs">
+import System.Random
+
+main = do
+    gen <- getStdGen
+    putStr $ take 20 (randomRs ('a','z') gen)
+</pre>
+
+<pre name="code" class="plain">
+$ runhaskell random_string.hs
+pybphhzzhuepknbykxhe
+$ runhaskell random_string.hs
+eiqgcxykivpudlsvvjpg
+$ runhaskell random_string.hs
+nzdceoconysdgcyqjruo
+$ runhaskell random_string.hs
+bakzhnnuzrkgvesqplrx
+</pre>
+
+不過要小心，將 `getStdGen` 執行兩次將會跟系統要兩次相同的全域產生器。若是你這樣做：
+
+<pre name="code" class="haskell:hs">
+import System.Random
+
+main = do
+    gen <- getStdGen
+    putStrLn $ take 20 (randomRs ('a','z') gen)
+    gen2 <- getStdGen
+    putStr $ take 20 (randomRs ('a','z') gen2)
+</pre>
+
+你會得到兩次被印出來的相同字串。一種取得兩個長度 20 的不同字串的方式，是建立一個無限串流、然後取前 20 個字元，在一行中將它們印出來、然後取第二組 20 個字元，再在第二行中將它們印出來。對此，我們可以使用 `Data.List` 的 `splitAt` function，其在某個索引值上切割一個 list，並回傳一個第一部分作為第一項、第二部分作為第二項的 tuple。
+
+<pre name="code" class="haskell:hs">
+import System.Random
+import Data.List
+
+main = do
+    gen <- getStdGen
+    let randomChars = randomRs ('a','z') gen
+        (first20, rest) = splitAt 20 randomChars
+        (second20, _) = splitAt 20 rest
+    putStrLn first20
+    putStr second20
+</pre>
+
+另一種方式是使用 <code class="label function">newStdGen</code> 動作，其將我們當前的隨機產生器切成兩個產生器。它以其中一個更新全域隨機產生器，並將另一個封裝成它的結果。
+
+<pre name="code" class="haskell:hs">
+import System.Random
+
+main = do
+    gen <- getStdGen
+    putStrLn $ take 20 (randomRs ('a','z') gen)
+    gen' <- newStdGen
+    putStr $ take 20 (randomRs ('a','z') gen')
+</pre>
+
+當我們將 `newStdGen` 綁定到某個東西上時，不僅我們取得了一個新的隨機產生器、全域的產生器也被更新了，所以若是我們再次執行 `getStdGen` 並將它綁定到某個東西上，我們會得到一個與 `gen` 不同的產生器。
+
+這裡有個小程式，會讓使用者猜猜它想的數字是什麼。
+
+<pre name="code" class="haskell:hs">
+import System.Random
+import Control.Monad(when)
+
+main = do
+    gen <- getStdGen
+    askForNumber gen
+
+askForNumber :: StdGen -> IO ()
+askForNumber gen = do
+    let (randNumber, newGen) = randomR (1,10) gen :: (Int, StdGen)
+    putStr "Which number in the range from 1 to 10 am I thinking of? "
+    numberString <- getLine
+    when (not $ null numberString) $ do
+        let number = read numberString
+        if randNumber == number
+            then putStrLn "You are correct!"
+            else putStrLn $ "Sorry, it was " ++ show randNumber
+        askForNumber newGen
+</pre>
+
+<img src="img/jackofdiamonds.png" alt="jack of diamonds" style="float:left" />
+我們建立一個 `askForNumber` function，其取一個隨機數產生器，並回傳一個將會提示使用者輸入數字、並告知他猜的數字是否正確的 I/O 動作。在這個 function 中，我們先基於我們作為參數取得的產生器，產生一個隨機數與一個新的產生器，並將它們叫做 `randNumber` 與 `newGen`。讓我們假定產生出來的數字為 `7`。這時我們請使用者猜猜我們想的數字是什麼。我們執行 `getLine` 並將其結果綁定到 `numberString`。當使用者輸入 `7`，`numberString` 就變成了 `"7"`。接著，我們使用 `when` 來檢查使用者輸入的字串是否為空字串。若是，一個 `return ()` 的空 I/O 動作會被執行，這實際上就是結束程式。若否，那裡的 <i>do</i> 區塊組成的動作就會被執行。我們對 `numberString` 使用 `read` 以將它轉成數字，所以 `number` 當前為 `7`。
+
+<p class="hint">
+<em>對不起！</em>若是這裡使用者給了我們 <code>read</code> 無法讀取的輸入（像是 <code>"haha"</code>），我們的程式將會帶著一個醜陋的錯誤訊息崩潰。若是你不想要你的程式在錯誤輸入時崩潰，就使用 <code class="label function">reads</code> 吧，它會在它字串讀取失敗的時候回傳一個空的 list。當它成功的時候，它會回傳一個帶著一個 tuple 的單一元素 list，tuple 以我們所需的值作為一項、以它無法讀取的字串作為另一項<span class="note">〔譯註：所以執行 <code>reads "123abc456" :: [(Int, String)]</code> 得到的結果為 <code>[(123, "abc456")]</code>〕</span>。
+</p>
+
+我們檢查我們輸入的數字是否與隨機產生的數字相等，並給予使用者合適的訊息。接著我們遞迴地呼叫 `askForNumber`，只是這時是以我們得到的新產生器呼叫，其給予我們一個就像是我們執行的 I/O 動作，只是它取決於一個不同的產生器，接著我們執行它。
+
+`main` 僅以「從系統得到的一個隨機產生器，並以它來呼叫 `askForNumber` 以得到初始動作」組成。
+
+以下是我們程式的運作狀況！
+
+<pre name="code" class="plain">
+$ runhaskell guess_the_number.hs
+Which number in the range from 1 to 10 am I thinking of? 4
+Sorry, it was 3
+Which number in the range from 1 to 10 am I thinking of? 10
+You are correct!
+Which number in the range from 1 to 10 am I thinking of? 2
+Sorry, it was 4
+Which number in the range from 1 to 10 am I thinking of? 5
+Sorry, it was 10
+Which number in the range from 1 to 10 am I thinking of?
+</pre>
+
+另一種建立相同程式的方式就像這樣：
+
+<pre name="code" class="haskell:hs">
+import System.Random
+import Control.Monad(when)
+
+main = do
+    gen <- getStdGen
+    let (randNumber, _) = randomR (1,10) gen :: (Int, StdGen)
+    putStr "Which number in the range from 1 to 10 am I thinking of? "
+    numberString <- getLine
+    when (not $ null numberString) $ do
+        let number = read numberString
+        if randNumber == number
+            then putStrLn "You are correct!"
+            else putStrLn $ "Sorry, it was " ++ show randNumber
+        newStdGen
+        main
+</pre>
+
+這非常相似於先前的版本，只是我們並非是建立一個接收一個產生器、然後以更新的產生器遞迴地呼叫自身的 function，而是在 `main` 中完成所有的工作。在告訴使用者他們的猜測是否正確之後，我們就更新全域產生器，然後再一次呼叫 `main`。兩種方式都是合法的，但我更喜歡第一種，因為它在 `main` 中做的事比較少，也提供給我們一個可以輕易重用的 function。
+
 ## <a name="bytestrings">Bytestrings</a>
 
 ## <a name="exceptions">例外</a>
