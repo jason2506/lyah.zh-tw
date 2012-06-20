@@ -1373,4 +1373,96 @@ main = do
 
 ## <a name="bytestrings">Bytestrings</a>
 
+<img src="img/chainchomp.png" alt="like normal string, only they byte ... what a pedestrian pun this is" style="float:right" />
+list 是個很酷也很有用的資料結構。到目前為止，我們已經幾乎無處不用它。這裡有許多操作它們的 function，且 Haskell 的惰性允許我們將其他語言的 for 與 while 迴圈替換成對 list 的過濾與映射。因為求值只會在它真的需要的時候才會發生，所以像是無限 list（甚至是無限 list 的無限 list！）這類東西，對我們來說都不成問題。這就是為什麼 list 也可以在從標準輸入讀取、或是從檔案進行讀取的時候，被用來表示串流。我們可以開啟一個檔案，並將它讀取為字串，即使它只有在出現需求的時候才會被存取。
+
+然而，將檔案作為字串處理有一個缺點：它往往很慢。如你所知，`String` 是個 `[Char]` 的型別同義詞。`Char` 沒有固定的大小，因為它會取數個位元組來表示一個──比如說，Unicode 的──字元。此外，list 是十分惰性的。若是你有個像 `[1,2,3,4]` 這樣的 list，它將只在非常必要的時候才會被求值。所以整個 list 就像是一個「一個 list」的承諾。還記得 `[1,2,3,4]` 是個 `1:2:3:4:[]` 的語法糖衣。當 list 的第一個元素被強迫求值（比如說印出它），list 的其餘部分 `2:3:4:[]` 仍然只是個「一個 list」的承諾，以此類推。所以你可以將 list 想成下一個元素將會在真的必要時被釋出、並帶著其後元素承諾的承諾。不難推論，將一個簡單的數字 list 作為一系列的承諾處理，可能並不是很有效率。
+
+大多時候這種開銷並不會太讓我們困擾，但在讀取大檔案並操作它們的時候，它就是一個不利條件了。這就是為什麼 Haskell 會有 *bytestring*。bytestring 有點像是 list，但每個元素大小都是一個位元組（或 8 位元〈bit〉）。它們處理惰性的方式也不同。
+
+bytestring 有兩種類型：strict 與 lazy。strict bytestring 屬於 `Data.ByteString`，且它完全廢除惰性。沒有牽涉在內的承諾；一個 strict bytestring 表示在一個陣列（array）中的一系列位元組。你無法有個像是無限 strict bytestring 這樣的東西。若是你對一個 strict bytestring 的第一個位元組求值，你就必須對整個 bytestring 求值。好的一面是開銷比較小，因為沒有涉及在內的 thunk（<i>承諾</i> 的術語）。壞的一面是它可能會快速塞滿你的記憶體，因為它被一次讀取到記憶體中。
+
+另一種 bytestring 類型屬於 `Data.ByteString.Lazy`。它是惰性的，但不若 list 惰性得那般徹底。就像是我們先前說的，一個 list 中有多少個元素，就有多少個 thunk。這就是讓它對於某些用途有點慢的原因。lazy bytestring 採取不同的方法──它被儲存在 chunk（別跟 thunk 搞混了！）中，每個 chunk 的大小為 64K。所以若是我們對一個 lazy bytestring 中的一個位元組求值（印出它之類的），第一個 64K 就會被求值。在這之後，它僅是一個其餘 chunk 的承諾。lazy bytestring 有點像是大小為 64K 的 strict bytestring 的 list。當你以 lazy bytestring 處理一個檔案時，它就會一個 chunk 接著一個 chunk 被讀取。這很棒，因為它不會導致記憶體使用量飆高，且 64K 大概恰好適合裝入你 CPU 的 L2 快取中。
+
+如果你看過 `Data.ByteString.Lazy` 的[文件](http://www.haskell.org/ghc/docs/latest/html/libraries/bytestring/Data-ByteString-Lazy.html)，你會看到它有很多與 `Data.List` 中的 function 同名的 function，只是型別簽名中的是 `ByteString` 而不是 `[a]`、是 `Word8` 而不是 `a`。具有相同名稱的 function 大多與運作在 list 上的 function 的行為相同。因為名稱是相同的，所以我們要在一個腳本中進行限制引入，然後將這個腳本載入到 GHCI 中以試試 bytestring。
+
+<pre name="code" class="haskell:hs">
+import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString as S
+</pre>
+
+`B` 擁有 lazy bytestring 的型別與 function，而 `S` 擁有 strict 的型別與 function。我們大多會使用 lazy 版本。
+
+<code class="label function">pack</code> 這個 function 的型別簽名為 `pack :: [Word8] -> ByteString`。這所代表的是，它取一個 `Word8` 型別的位元組的 list，並回傳一個 `ByteString`。你可以將它想成接收一個 lazy 的 list，並讓它比較不 lazy 一點，以讓它只有在 64K 的間隔上是 lazy 的。
+
+這個 `Word8` 型別是什麼呢？嗯，它就像是 `Int`，只是它的範圍比較小，即 0-255。它表示一個 8 位元的數字。就如同 `Int`，它也在 `Num` typeclass 之中。舉例來說，我們知道 `5` 是多型的，它可以作為任何數值型別操作。嗯，它也可以看作 `Word8` 型別。
+
+<pre name="code" class="haskell:ghci">
+ghci> B.pack [99,97,110]
+Chunk "can" Empty
+ghci> B.pack [98..120]
+Chunk "bcdefghijklmnopqrstuvwx" Empty
+</pre>
+
+如你所見，你通常不必太過擔心 `Word8`，因為型別系統可以讓數字選擇這個型別。若是你試著將一個很大的數字──像是 `336`──用作一個 `Word8`，它就會被包成 `80`<span class="note">〔譯註：因為發生溢位〈overflow〉，所以 `336` 捨去溢出的位元，就變成 `80` 了〕</span>。
+
+我們只將一點點值包裝成一個 `ByteString`，所以它塞得進一個 chunk 中。`Empty` 就像是對於 list 的 `[]`。
+
+<code class="label function">unpack</code> 為 `pack` 的反函數。它取一個 bytestring 並將它轉成一個位元組的 list。
+
+<code class="label function">fromChunks</code> 接收一個 strict bytestring 的 list，並將它轉成一個 lazy bytestring。<code class="label function">toChunks</code> 接收一個 lazy bytestring 的 list，並將它轉成一個 strict bytestring。
+
+<pre name="code" class="haskell:ghci">
+ghci> B.fromChunks [S.pack [40,41,42], S.pack [43,44,45], S.pack [46,47,48]]
+Chunk "()*" (Chunk "+,-" (Chunk "./0" Empty))
+</pre>
+
+若是你有許多很小的 strict bytestring，且你想要有效率地處理它們，但不想先將它們在記憶體中結合成一個大的 strict bytestring 的話，這樣是很好的。
+
+bytestring 版本的 `:` 被叫做 <code class="label function">cons</code>。它取一個位元組與一個 bytestring，並將這個位元組擺在開頭。但它是惰性的，所以即便 bytestring 中的第一個 chunk 沒滿，它也會建立一個新的 chunk。這就是為什麼若是你要在一個 bytestring 的開頭插入很多位元組的時候，使用 strict 版本的 `cons`──<code class="label function">cons'</code>──是比較好的。
+
+<pre name="code" class="haskell:ghci">
+ghci> B.cons 85 $ B.pack [80,81,82,84]
+Chunk "U" (Chunk "PQRT" Empty)
+ghci> B.cons' 85 $ B.pack [80,81,82,84]
+Chunk "UPQRT" Empty
+ghci> foldr B.cons B.empty [50..60]
+Chunk "2" (Chunk "3" (Chunk "4" (Chunk "5" (Chunk "6" (Chunk "7" (Chunk "8" (Chunk "9" (Chunk ":" (Chunk ";" (Chunk "<"
+Empty))))))))))
+ghci> foldr B.cons' B.empty [50..60]
+Chunk "23456789:;<" Empty
+</pre>
+
+如你所看到的，<code class="label function">empty</code> 建立了一個空的 bytestring。看到 `cons` 與 `cons'` 之間的不同了嗎？藉著 `foldr`，我們已一個空的 bytestring 開始，然後從右邊走遍數字的 list、將每個數字加到 bytestring 的開頭。當我們使用 `cons` 時，最後會是每個位元組一個 chunk，這有點違背了目的。
+
+除此之外，bytestring 模組有許多近似於 `Data.List` 中的 function 的 function，包含、但不限於 `head`、`tail`、`init`、`null`、`length`、`map`、`reverse`、`foldl`、`foldr`、`concat`、`takeWhile`、`filter`、等等。
+
+它也有具有相同名稱、且表現得跟 `System.IO` 中的某些 function 一樣的 function，只是 `String` 都被以 `ByteString` 取代。舉例來說， `System.IO` 中的 `readFile` function 的型別為 `readFile :: FilePath -> IO String`，而 bytestring 模組中的 <code class="label function">readFile</code> 的型別為 `readFile :: FilePath -> IO ByteString`。小心，若是你使用 strict bytestring，且試圖讀取一個檔案，它將會一次將它讀取到記憶體中！以 lazy bytestring，它將會將它讀入整齊的 chunk 中。
+
+讓我們建立一個作為命令列引數接收兩個檔案名稱、並將第一個檔案複製到第二個檔案的簡單程式。注意到 `System.Directory` 已經有個叫做 `copyFile` 的 function，但我們無論如何都要實作我們自己的檔案複製 function 與程式。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import qualified Data.ByteString.Lazy as B
+
+main = do
+    (fileName1:fileName2:_) <- getArgs
+    copyFile fileName1 fileName2
+
+copyFile :: FilePath -> FilePath -> IO ()
+copyFile source dest = do
+    contents <- B.readFile source
+    B.writeFile dest contents
+</pre>
+
+我們建立我們自己的 function，其接收兩個 `FilePath`（記住，`FilePath` 僅是個 `String` 的型別同義詞），並回傳一個將會使用 bytestring 將一個檔案複製到另一個檔案的 I/O 動作。在 `main` function 中，我們僅取得引數，並以它們來呼叫我們的 function 以取得 I/O 動作，它接著會被執行。
+
+<pre name="code" class="plain">
+$ runhaskell bytestringcopy.hs something.txt ../../something.txt
+</pre>
+
+注意到不使用 bytestring 的程式看起來可能就像這樣，唯一的不同是我們使用了 `B.readFile` 與 `B.writeFile`，而非 `readFile` 與 `writeFile`。許多時候，你可以藉由進行必要的引入、然後將限制的模組名稱放在某些 function 的前面，以把使用一般字串的程式轉成使用 bytestring 的程式。有時候，你必須轉換你寫來運作在字串上的 function，以讓它運作在 bytestring 上，但這並不困難。
+
+每當你需要讓一個將許多資料讀取成字串的程式有更好的效能時，給 bytestring 一個機會吧，或許你會以很小的努力得到不錯的效能提昇。我通常使用一般的字串來撰寫程式，然後若是效能並不令人滿意，就將它改成使用 bytestring。
+
 ## <a name="exceptions">例外</a>
