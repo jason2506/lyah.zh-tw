@@ -1466,3 +1466,186 @@ $ runhaskell bytestringcopy.hs something.txt ../../something.txt
 每當你需要讓一個將許多資料讀取成字串的程式有更好的效能時，給 bytestring 一個機會吧，或許你會以很小的努力得到不錯的效能提昇。我通常使用一般的字串來撰寫程式，然後若是效能並不令人滿意，就將它改成使用 bytestring。
 
 ## <a name="exceptions">例外</a>
+
+<img src="img/timber.png" style="float:left" alt="timberr!!!!" />
+所有的語言都有可能會有以某種方式失敗的 procedure、function、與一段程式碼。這是個不爭的事實。不同的語言有不同處理失敗的方法。在 C 裡面，我們通常使用一些異常的回傳值（像是 `-1`，或是一個空指標〈null pointer〉），來表示一個 function 回傳的值不該如同普通的值一般看待。在另一方面，Java 與 C# 往往會使用例外（exception）來處理失敗的情況。當例外被拋出（throw）時，控制流程就會跳到我們定義來做一些清理、接著或許會重新拋出例外以讓其它錯誤處理程式碼可以處理其他東西的某段程式碼。
+
+Haskell 有個非常棒的型別系統。代數資料型別允許像是 `Maybe` 與 `Either` 之類的型別，我們可以使用這些型別的值來表示可能有或沒有的結果。在 C 裡頭，在失敗時回傳 `-1` 完全是慣例的問題。它只對人有特殊意義。如果我們不小心，我們可能會把這些異常的值作為一般的值對待，然後它們就會導致我們程式碼中的浩劫與驚愕。Haskell 的型別系統在這方面，給了我們非常需要的安全性。一個 `a -> Maybe b` 的 function 清楚地表示它可能會產生一個包在 `Just` 中的 `b`，或者回傳 `Nothing`。這個型別與只有簡單的 `a -> b` 不同，若是我們試著交替使用這兩個 function，編譯器就會向我們抱怨。
+
+縱使有富有表達能力的型別來做為計算失敗的依據，Haskell 依舊擁有對例外的支持，因為它們在 I/O 情境中更加合理。在處理外部世界時，很多東西都會出問題的，因為它就是這麼不可信任。舉例來說，在開啟一個檔案時，一堆東西都可能出問題。檔案可能被鎖住了、它可能根本不在那裏、或者硬碟裝置什麼的可能根本不在那裏。所以，在這類錯誤發生的時候，能夠跳去我們程式碼中某個錯誤處理的部份是很有用的。
+
+好，所以 I/O 程式碼（即不純粹的程式碼）可以拋出例外。這很合理。但純粹的程式碼怎麼樣呢？嗯，它也可以拋出例外。想想 `div` 與 `head` function。它們的型別分別為 `(Integral a) => a -> a -> a` 與 `[a] -> a`。在它們的回傳型別中沒有 `Maybe` 或是 `Either`，但它們都有可能失敗！當你試著除以零，`div` 會在你的臉上爆炸；當你給 `head` 一個空 list，它會大發脾氣。
+
+<pre name="code" class="haskell:ghci">
+ghci> 4 `div` 0
+*** Exception: divide by zero
+ghci> head []
+*** Exception: Prelude.head: empty list
+</pre>
+
+<img src="img/police.png" alt="Stop right there, criminal scum!
+Nobody breaks the law on my watch!
+Now pay your fine or it's off to jail." style="float:left" />
+純粹的程式碼可以拋出例外，但它只能夠（在我們進入 `main` 的 <i>do</i> 區塊中的時候）在我們程式碼中的 I/O 部分被攔截（catch）。這是因為你不知道在純粹程式碼中的值會在何時（或者，是否會）被計算，因為它是惰性的、且沒有被明確定義的執行順序，而 I/O 程式碼則有。
+
+稍早，我們談過為什麼我們花在我們程式 I/O 部分的時間應該要盡可能地少。我們程式的邏輯應該大多要屬於純粹的 function 中，因為它們的結果只視用以呼叫 function 的參數而定。處理純粹的 function 時，你只需要思考 function 回傳的東西，因為它不能做這之外的任何事情。這會讓你的日子好過點。即使在 I/O 之中處理某些邏輯是必要的（像是開啟檔案之類的），它還是最好要保持在最低限度。純粹的 function 預設是惰性的，這代表我們不知道它會在何時被求值，而且這也無關緊要。然而，一旦純粹的 function 開始拋出例外，它何時會被求值就很重要了。這就是為什麼我們只能在我們程式碼中的 I/O 部分攔截由純粹 function 拋出的例外。這很糟糕，因為我們想要讓 I/O 部分盡可能地小。然而，若是我們不在我們程式碼中的 I/O 部分攔截它，我們的程式就會當掉。解決方法呢？不要混用例外與純粹的程式碼。藉著 Haskell 強大的型別系統的優勢，並使用像是 `Either` 與 `Maybe` 型別來表示可能會失敗的結果。
+
+這就是為什麼我們現在要來看看如何使用 I/O 例外。I/O 例外是我們在屬於 `main` 一部分的一個 I/O 動作中、與外界溝通時發生問題所造成的例外。舉例來說，我們可以試著開啟一個檔案，結果是檔案已經被刪除或怎麼了。看看這個開啟一個檔案、其名稱作為命令列引數給定、並告訴我們檔案有多少行的程式。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.IO
+
+main = do (fileName:_) <- getArgs
+          contents <- readFile fileName
+          putStrLn $ "The file has " ++ show (length (lines contents)) ++ " lines!"
+</pre>
+
+一個非常簡單的程式。我們執行 `getArgs` I/O 動作，並將它產生的 list 中的第一個字串綁定到 `fileName`。然後我們把檔案的內容叫做 `contents`。最後，我們將 `lines` 應用到這些內容上以得到每一行的 list，然後我們取得這個 list 的長度、並將它丟給 `show` 以得到這個數字的字串表示。它如同預期般運作，但當我們給它一個不存在的檔案名稱時會發生什麼呢？
+
+<pre name="code" class="plain">
+$ runhaskell linecount.hs i_dont_exist.txt
+linecount.hs: i_dont_exist.txt: openFile: does not exist (No such file or directory)
+</pre>
+
+阿，我們從 GHC 得到一個錯誤，告訴我們檔案不存在。我們的程式當了。如果檔案不存在，而我們想要印出一個比較好的訊息呢？一種方式是在試著開啟檔案前，使用 `System.Directory` 的 <code class="label function">doesFileExist</code> function 來檢查檔案是否存在。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.IO
+import System.Directory
+
+main = do (fileName:_) <- getArgs
+          fileExists <- doesFileExist fileName
+          if fileExists
+              then do contents <- readFile fileName
+                      putStrLn $ "The file has " ++ show (length (lines contents)) ++ " lines!"
+              else do putStrLn "The file doesn't exist!"
+</pre>
+
+我們進行 `fileExists <- doesFileExist fileName`因為 `doesFileExist` 的型別為 `doesFileExist :: FilePath -> IO Bool`，這意謂著它會回傳一個以布林值作為其結果、以告訴我們檔案是否存在的 I/O 動作。我們不能直接在 <i>if</i> expression 中使用 `doesFileExist`。
+
+這裡的另一個解法是使用例外。它在這種情境中使用它是完全可以接受的。一個檔案不存在是一個由 I/O 產生的例外，所以在 I/O 中攔截它是非常好的。
+
+為了要使用例外來處理這個，我們要利用 `System.IO.Error` 的 <code class="label function">catch</code> function。它的型別為 `catch :: IO a -> (IOError -> IO a) -> IO a`。它接收兩個參數。第一個參數為一個 I/O 動作。舉例來說，它可以是個企圖開啟一個檔案的 I/O 動作。第二個參數就是所謂的 handler。若是傳遞到 `catch` 的第一個 I/O 動作拋出一個 I/O 例外，這個例外就會被傳遞到 handler 中，它會決定該做什麼。所以最終的結果即是一個 I/O 動作，其要不是與第一個參數做相同的動作、就是在第一個 I/O 動作拋出了一個例外時，去做 handler 所做的事情。
+
+<img src="img/puppy.png" alt="non sequitor" style="float:right" />
+如果你很熟悉像是 Java 或 Python 這些語言中的 <i>try-catch</i> 區塊，`catch` function 就與此相似。第一個參數為企圖去做的事，有點像是在其他命令式語言中、在 <i>try</i> 區塊的東西。第二個參數是接收例外的 handler，就像是大部分接收例外的 <i>catch</i> 區塊，你可以接著檢查看看發生了什麼事。handler 會在例外被拋出時執行。
+
+handler 取一個 `IOError` 型別的值，這是個代表「一個 I/O 例外已經發生」的值。它也帶有關於被拋出的例外型別的資訊。這個型別如何實作視語言自身的實作而定，這代表我們不能藉由對它進行模式匹配來檢查 `IOError` 型別的值，就像是我們不能對 <code>IO <i>something</i></code> 型別的值進行模式匹配一樣。我們可以用一堆有用的述部來查明關於 `IOError` 型別的值，如同我們不久將會學到的。
+
+所以讓我們來試試我們的新朋友 `catch`！
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.IO
+import System.IO.Error
+
+main = toTry `catch` handler
+
+toTry :: IO ()
+toTry = do (fileName:_) <- getArgs
+           contents <- readFile fileName
+           putStrLn $ "The file has " ++ show (length (lines contents)) ++ " lines!"
+
+handler :: IOError -> IO ()
+handler e = putStrLn "Whoops, had some trouble!"
+</pre>
+
+首先，你會發現我們以反引號包住它，以讓我們可以將它作為前綴 function 來使用，因為它取兩個參數。將它作為一個前綴 function 使用使得它更加易讀。所以 ``toTry `catch` handler`` 與 `catch toTry handler` 相同，這非常符合它的類型。`toTry` 為一個我們企圖執行的 I/O 動作，而 `handler` 為接收一個 `IOError`、並回傳一個在例外的情況中會被執行的動作的 function。
+
+讓我們執行看看：
+
+<pre name="code" class="plain">
+$ runhaskell count_lines.hs i_exist.txt
+The file has 3 lines!
+
+$ runhaskell count_lines.hs i_dont_exist.txt
+Whoops, had some trouble!
+</pre>
+
+在 handler 中，我們沒有檢查我們得到的 `IOError` 是哪一種。我們對於任何種類的錯誤，都只會說 `"Whoops, had some trouble!"`。就像在大多數其他語言一樣，在 Haskell 中，只有一個攔截所有類型例外的 handler 是個糟糕的作法。如果有某個我們不想要攔截的其它例外發生，像是我們中斷程式之類的呢？這就是為什麼我們要做在其他語言中通常也會做的相同事情：我們要檢查我們取得的例外是哪一種。如果它是我們等著攔截的例外，我們就做處理。若否，我們就把這個例外拋回荒野中。讓我們修改我們的程式，只攔截檔案不存在造成的例外。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.IO
+import System.IO.Error
+
+main = toTry `catch` handler
+
+toTry :: IO ()
+toTry = do (fileName:_) <- getArgs
+           contents <- readFile fileName
+           putStrLn $ "The file has " ++ show (length (lines contents)) ++ " lines!"
+
+handler :: IOError -> IO ()
+handler e
+    | isDoesNotExistError e = putStrLn "The file doesn't exist!"
+    | otherwise = ioError e
+</pre>
+
+所有東西都維持不變，除了 handler，我們將它修改成只攔截某類 I/O 例外。這裡我們使用了兩個新的 `System.IO.Error` function──<code class="label function">isDoesNotExistError</code> 與 <code class="label function">ioError</code>。`isDoesNotExistError` 為一個對於 `IOError` 的述部，代表它是一個取一個 `IOError`、並回傳一個 `True` 或 `False` 的 function，也就是它的型別為 `isDoesNotExistError :: IOError -> Bool`。我們將它使用在被傳遞到我們的 handler 的例外，以檢查它是否是個由檔案不存在所產生的錯誤。我們在這裡使用了 [guard](syntax-in-functions#guards-guards) 語法，但我們也可以使用 <i>if else</i>。若是它不是由檔案不存在所造成的，我們就以 `ioError` function 重新拋出被傳遞到 handler 的例外。它的型別為 `ioError :: IOException -> IO a`，所以它取一個 `IOError`，並產生一個將會拋出它的 I/O 動作。這個 I/O 動作的型別為 `IO a`，因為它永遠不會真的產生一個結果，所以它可以被視為 <code>IO <i>anything</i></code>。
+
+所以若是我們以一個 <i>do</i> 區塊結合在一起的 `toTry` I/O 動作拋出的例外不是由檔案存在所造成的，``toTry `catch` handler`` 就會攔截它、然後重新拋出它。很酷，對吧？
+
+還有許多作用在 `IOError` 上的述部，而若是一個 guard 不被求值為 `True`，求值就會落到下一個 guard。作用在 `IOError` 的述部為：
+
+* <code class="label function">isAlreadyExistsError</code>
+* <code class="label function">isDoesNotExistError</code>
+* <code class="label function">isAlreadyInUseError</code>
+* <code class="label function">isFullError</code>
+* <code class="label function">isEOFError</code>
+* <code class="label function">isIllegalOperation</code>
+* <code class="label function">isPermissionError</code>
+* <code class="label function">isUserError</code>
+
+其中大部分是不言自明的。`isUserError` 在我們使用 <code class="label function">userError</code> function──它被用來建立帶有字串的例外──來建立例外時，它會被求值為 `True`。舉例來說，你可以執行 `ioError $ userError "remote computer unplugged!"`，雖然它寧願你使用像是 `Either` 與 `Maybe` 型別來陳述可能的錯誤，而不是你自己用 `userError` 來拋出例外。
+
+所以你可以有個看起來像這樣的 handler：
+
+<pre name="code" class="haskell:hs">
+handler :: IOError -> IO ()
+handler e
+    | isDoesNotExistError e = putStrLn "The file doesn't exist!"
+    | isFullError e = freeSomeSpace
+    | isIllegalOperation e = notifyCops
+    | otherwise = ioError e
+</pre>
+
+其中 `notifyCops` 與 `freeSomeSpace` 為某個你定義的 I/O 動作。如果它不匹配你的任何一個準則，一定要重新拋出例外，否則你會導致你的程式在某些不該如此的情況中靜靜地失敗。
+
+`System.IO.Error` 也輸出了允許我們向例外要求某些屬性──像是造成錯誤的檔案 handle 是什麼、檔案名稱是什麼──的 function。它們都以 `ioe` 開頭，你可以在文件中看看[它們的完整清單](http://www.haskell.org/ghc/docs/6.10.1/html/libraries/base/System-IO-Error.html#3)。假使我們想要印出造成錯誤的檔案名稱。我們無法印出我們從 `getArgs` 得到的 `fileName`，因為只有 `IOError` 被傳遞到 handler 中，而 handler 不知道其它的東西。一個 function 只視呼叫它的參數而定。這就是為什麼我們要使用 <code class="label function">ioeGetFileName</code> function，其型別為 `ioeGetFileName :: IOError -> Maybe FilePath`。它取一個 `IOError` 作為參數，且可能傳回一個 `FilePath`（記住，這只是個 `String` 的型別同義詞，所以這是一樣的東西）。基本上，它所做的是從 `IOError` 擷取出檔案路徑，如果它可以的話。讓我們修改我們的程式，以印出作為例外發生原因的檔案路徑。
+
+<pre name="code" class="haskell:hs">
+import System.Environment
+import System.IO
+import System.IO.Error
+
+main = toTry `catch` handler
+
+toTry :: IO ()
+toTry = do (fileName:_) <- getArgs
+           contents <- readFile fileName
+           putStrLn $ "The file has " ++ show (length (lines contents)) ++ " lines!"
+
+handler :: IOError -> IO ()
+handler e
+    | isDoesNotExistError e =
+        case ioeGetFileName e of Just path -> putStrLn $ "Whoops! File does not exist at: " ++ path
+                                 Nothing -> putStrLn "Whoops! File does not exist at unknown location!"
+    | otherwise = ioError e
+</pre>
+
+在 `isDoesNotExistError` 為 `True` 的 guard 中，我們使用一個 <i>case</i> expression 以 `e` 呼叫 `ioeGetFileName`，然後對它回傳的 `Maybe` 值進行模式匹配。當你想要在不引進新的 function 的情況下、對某個值進行模式匹配時，<i>case</i> expression 是很常被使用的。
+
+你不必在整個 I/O 部分中使用 handler 來 `catch` 例外。你可以僅以 `catch` 涵蓋 I/O 程式碼的特定部分，或者你可以以 `catch` 涵蓋多個部分、並為它們使用不同的 handler，像這樣：
+
+<pre name="code" class="haskell:hs">
+main = do toTry `catch` handler1
+          thenTryThis `catch` handler2
+          launchRockets
+</pre>
+
+在這裡，`toTry` 使用 `handler1` 作為 handler，而 `thenTryThis` 使用 `handler2`。`launchRockets` 並非 `catch` 的參數，所以它可能拋出的任何例外都會讓我們的程式當掉，除非 `launchRockets` 在內部使用 `catch` 來處理它自己的例外。當然，`toTry`、`thenTryThis` 與 `launchRockets` 都是使用 <i>do</i> 語法結合而成的 I/O 動作，且被假設定義在其它地方。這有點像是其它語言的 <i>try-catch</i> 區塊，其中你可以把你整個程式包在一個單一的 <i>try-catch</i> 中；或者你可以使用更細粒度的方法，在程式碼的不同部分使用不同的 <i>try-catch</i>，以控制哪種錯誤處理要發生在何處。
+
+現在你知道如何處理 I/O 動作了！從純粹的程式碼拋出例外、再處理它們並沒有涵蓋在這裡。主要是因為，如同我們所說的，Haskell 提供了比起用 I/O 攔截錯誤更好的方法來表示錯誤。即使在將 I/O 動作結合在一起時可能會失敗，我也寧願讓它們的型別像是 `IO (Either a b)`，代表它們為一般的 I/O 動作、但它們在執行時產生的結果型別為 `Either a b`，也就代表它是 `Left a` 或 `Right b`。
