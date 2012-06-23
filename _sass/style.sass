@@ -55,6 +55,10 @@ img
   border: 0
   margin: .72em
 
+ul
+  margin: 1.79em
+  padding: 0
+
 #content
   width: 57.15em
   margin: 0 auto
@@ -124,9 +128,12 @@ body.chapters
 
     & > li > a
       border-bottom: 1px solid #DDD
-      color: #555
+      color: #000
       display: block
       text-decoration: none
+
+      &:visited
+        color: #555
 
       &:hover
         color: #BD2A33
@@ -137,15 +144,17 @@ body.chapters
     line-height: 2.5
     list-style: none
     margin: 1.56em
-    padding: 0
 
-    & > li > a
-      color: #000
-      text-decoration: underline
+    & > li
+      height: 2.69em
 
-      &:visited
-        color: #777
+      & > a
+        color: #000
+        text-decoration: underline
 
-      &:hover
-        color: #BD2A33
+        &:visited
+          color: #777
+
+        &:hover
+          color: #BD2A33
 
