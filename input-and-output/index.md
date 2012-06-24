@@ -4,6 +4,9 @@ title: 輸入與輸出
 prev:
     url: making-our-own-types-and-typeclasses
     title: 建立我們自己的型別與 Typeclass
+next:
+    url: functionally-solving-problems
+    title: 函數式地解決問題
 ---
 
 <img src="img/dognap.png" alt="poor dog" style="float:right" />
