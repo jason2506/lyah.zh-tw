@@ -80,7 +80,7 @@ E-R-E-H-T- -O-L-L-E-H
 
 大概正如你所知的，`intersperse '-' . reverse . map toUpper` 為一個接收一字串、對其映射 `toUpper`、應用 `reverse` 到其結果、然後應用 `intersperse '-'` 到其結果的 function。它就像是寫下 `(\xs -> intersperse '-' (reverse (map toUpper xs)))`，只是更漂亮。
 
-另一個我們一直在處理、但沒有認出它是一個 `Functor` 的 `Functor` 實體為 `(->) r`。你現在可能有點混亂，因為 `(->) r` 到底代表什麼鬼東西？function 型別 `r -> a` 可以被改寫成 `(->) r a`，很像是我們可以將 `2 + 3` 寫成 `(+) 2 3`。當我們以 `(->) r a` 來看它時，我們能夠以略微不同的觀點來看看 `(->)`，因為我們發現它就像 `Either`，是一個接收兩個型別參數的型別建構子。但要記得，我們說過一個型別建構子必須恰好取一個型別參數，以讓它能作為 `Functor` 的實體。這就是為什麼我們無法讓 `(->)` 為 `Functor` 的實體，但若是我們將它部分應用成 `(->) r`，它就不會產生任何問題。若是語法允許型別建構子以片段被部分應用（像是我們可以藉由 `(2+)` 來部分應用 `+`，其與 `(+) 2` 相同），你可以將 `(->) r` 寫成 `(r ->)`。function functor 如何呢？嗯，讓我們看看 `Control.Monad.Instances` 中的實作：
+另一個我們一直在處理、但沒有認出它是一個 `Functor` 的 `Functor` 實體為 `(->) r`。你現在可能有點混亂，因為 `(->) r` 到底代表什麼鬼東西？function 型別 `r -> a` 可以被改寫成 `(->) r a`，很像是我們可以將 `2 + 3` 寫成 `(+) 2 3`。當我們以 `(->) r a` 來看它時，我們能夠以略微不同的觀點來看看 `(->)`，因為我們發現它就像 `Either`，是一個接收兩個型別參數的型別建構子。但要記得，我們說過一個型別建構子必須恰好取一個型別參數，以讓它能作為 `Functor` 的實體。這就是為什麼我們無法讓 `(->)` 為 `Functor` 的實體，但若是我們將它部分應用成 `(->) r`，它就不會產生任何問題。若是語法允許型別建構子以 section 被部分應用（像是我們可以藉由 `(2+)` 來部分應用 `+`，其與 `(+) 2` 相同），你可以將 `(->) r` 寫成 `(r ->)`。function functor 如何呢？嗯，讓我們看看 `Control.Monad.Instances` 中的實作：
 
 <p class="hint">
 我們通常會將接收任何值、並回傳任何值的 function 記作 <code>a -> b</code>。<code>r -> a</code> 是一樣的東西，我們只是使用了不同的字母來代表型別變數。
@@ -204,7 +204,7 @@ instance Functor Maybe where
 <img src="img/justice.png" alt="justice is blind, but so is my dog" style="float:left" />
 *第二條原則聲明，組合兩個 function、然後將產生的 function 映射到一個 functor，應該與先將一個 function 映射到 functor、然後映射另一個 function 相同。*正式地寫，其代表 <code class="label law">fmap (f . g) = fmap f . fmap g</code>。或者以另一種方式來寫，對於任意 functor <i>F</i>，下式應該成立： <code class="label law">fmap (f . g) F = fmap f (fmap g F)</code>。
 
-若是我們可以證明某個型別遵守這兩個 functor 原則，在涉及映射時，我們就可以依靠它與其他 functor 相同的基礎行為。我們可以知道，當我們對它使用 `fmap` 時，背後不會有任何映射以外的事情發生，且它會作為一個可以被映射的東西，即 functor。你藉由查看 `fmap` 對於某個型別的實作、然後使用我們用來檢查 `Maybe` 是否遵守第一原則的方法，以理解對於這個型別，第二原則為何成立。
+若是我們可以證明某個型別遵守這兩個 functor 原則，在涉及映射時，我們就可以依靠它與其它 functor 相同的基礎行為。我們可以知道，當我們對它使用 `fmap` 時，背後不會有任何映射以外的事情發生，且它會作為一個可以被映射的東西，即 functor。你藉由查看 `fmap` 對於某個型別的實作、然後使用我們用來檢查 `Maybe` 是否遵守第一原則的方法，以理解對於這個型別，第二原則為何成立。
 
 若是你想的話，我們可以檢驗第二 functor 原則對於 `Maybe` 是如何成立的。如果我們對 `Nothing` 執行 `fmap (f . g)`，我們會得到 `Nothing`，因為以任何 function 對 `Nothing` 進行 `fmap` 都回傳 `Nothing`。若是我們執行 `fmap f (fmap g Nothing)`，我們會因為相同的原因得到 `Nothing`。好，看到若是 `Maybe` 為一個 `Nothing` 值時，第二原則對於 `Maybe` 如何成立是非常簡單、幾乎是直觀的。
 
@@ -262,7 +262,7 @@ ghci> id (CJust 0 "haha")
 CJust 0 "haha"
 </pre>
 
-阿！我們知道第一個 functor 原則聲明，若是我們將 `id` 映射到一個 functor，它應該要與以相同的 functor 呼叫 `id` 相同，但如同我們在這個例子中看到的，這對於我們的 `CMaybe` functor 並不為真。它不遵守 functor 原則，即使它是 `Functor` typeclass 的一員，它也不是一個 functor。若是某人將我們的 `CMaybe` 作為一個 functor 使用，他們會預期它像個好 functor 一樣遵守 functor 原則。但即使 `CMaybe` 自稱是一個 functor，它作為一個 functor 也失格了，所以將它用作一個 functor 可能會導致一些有缺陷的程式碼。當我們使用一個 functor 時，若是我們先組合一些 function、然後將它們映射到 functor，或者我們僅連續將每個 function 映射到一個 functor 都不該有關係。但使用 `CMaybe` 卻有關係，因為它記錄了它被映射的次數。一點也不好！若是我們想讓 `CMaybe` 遵守 functor 原則，我們就必須在我們使用 `fmap` 時，令 `Int` 欄位維持不變。
+阿！我們知道第一個 functor 原則聲明，若是我們將 `id` 映射到一個 functor，它應該要與以相同的 functor 呼叫 `id` 相同，但如同我們在這個例子中看到的，這對於我們的 `CMaybe` functor 並不為真。它不遵守 functor 原則，即使它是 `Functor` typeclass 的一員，它也不是一個 functor。若是某人將我們的 `CMaybe` 作為一個 functor 使用，它們會預期它像個好 functor 一樣遵守 functor 原則。但即使 `CMaybe` 自稱是一個 functor，它作為一個 functor 也失格了，所以將它用作一個 functor 可能會導致一些有缺陷的程式碼。當我們使用一個 functor 時，若是我們先組合一些 function、然後將它們映射到 functor，或者我們僅連續將每個 function 映射到一個 functor 都不該有關係。但使用 `CMaybe` 卻有關係，因為它記錄了它被映射的次數。一點也不好！若是我們想讓 `CMaybe` 遵守 functor 原則，我們就必須在我們使用 `fmap` 時，令 `Int` 欄位維持不變。
 
 首先，functor 原則看起來可能有點令人困擾、且不必要，但若是我們知道一個型別遵守這兩個原則，我們就可以做出某些它會如何行為的假設。若是一個型別遵守 functor 原則，我們就知道對這個型別的值呼叫 `fmap` 只會將 function 映射到它，僅此而已。這使得程式碼更加抽象且可擴充，因為我們可以使用原則來推論任何 functor 都該有的行為，並建立可靠地操作任意 functor 的 function。
 
@@ -273,6 +273,482 @@ CJust 0 "haha"
 若是你將 functor 想成輸出值的東西，你可以將映射到 functor 想成對 functor 的輸出附加一個改變值的轉換。當我們執行 `fmap (+3) [1,2,3]` 時，我們將轉換 `(+3)` 附加到 `[1,2,3]` 的輸出，所以無論我們何時看到 list 輸出的數字，`(+3)` 都會被應用到它。另一個例子是映射 function。當我們執行 `fmap (+3) (*3)` 時，我們將轉換 `(+3)` 附加到 `(*3)` 最終的輸出上。以這種方式來看它，給了我們一些為何將 `fmap` 使用在 function 只是個計算（`fmap (+3) (*3)` 等於 `(+3) . (*3)`，其等同於 `\x -> ((x*3)+3)`）的感覺，因為我們取一個像是 `(*3)` 的 function，接著我們將轉換 `(+3)` 附加到它的輸出。結果仍然是一個 function，只是當我們給它一個數字時，它會被乘以三、然後它會通過附加的轉換、其中它會被加上三。這就是使用複合操作所做的了。
 
 ## <a name="applicative-functors">Applicative functor</a>
+
+<img src="img/present.png" style="float:right" alt="disregard this analogy" />
+在這一節，我們要看看在 Haskell 中，以 `Control.Applicative` 模組的 `Applicative` typeclass 表示的 applicative functor，其改進了 functor。
+
+如你所知，在 Haskell 中的 function 預設是被 curry 的，這代表一個看起來取多個參數的 function，實際上只取一個參數、並回傳一個取下一個參數的 function，以此類推。若是一個 function 的型別為 `a -> b -> c`，我們通常會說，它取兩個參數、並回傳一個 `c`，但它實際上是取一個 `a`、並回傳一個 function `b -> c`。這就是為什麼我們能夠將一個 function 以 `f x y` 或者 `(f x) y` 呼叫。這個機制讓我們藉由僅以較少的參數呼叫 function 來部分應用它們，這會產生我們接著能夠傳遞到其它 function 的 function。
+
+到目前為止，當我們將 function 映射到 functor 時，我們通常會映射只取一個參數的 function。但當我們將一個像是 `*` 的 function──其取兩個參數──映射到一個 functor 時會發生什麼事呢？讓我們看看幾個這種情況的具體例子。若是我們有個 `Just 3`，並執行 `fmap (*) (Just 3)`，我們會得到什麼？從 `Maybe` 為 `Functor` 的實作，我們知道若是它是個 <code>Just <i>something</i></code> 值，它就會將 function 應用到 `Just` 之中的 <code><i>something</i></code>。於是，執行 `fmap (*) (Just 3)` 會產生 `Just ((*) 3)`。若是我們使用 section，這也可以被寫成 `Just (* 3)`。有趣！我們得到了一個包在一個 `Just` 中的 function！
+
+<pre name="code" class="haskell:ghci">
+ghci> :t fmap (++) (Just "hey")
+fmap (++) (Just "hey") :: Maybe ([Char] -> [Char])
+ghci> :t fmap compare (Just 'a')
+fmap compare (Just 'a') :: Maybe (Char -> Ordering)
+ghci> :t fmap compare "A LIST OF CHARS"
+fmap compare "A LIST OF CHARS" :: [Char -> Ordering]
+ghci> :t fmap (\x y z -> x + y / z) [3,4,5,6]
+fmap (\x y z -> x + y / z) [3,4,5,6] :: (Fractional a) => [a -> a -> a]
+</pre>
+
+若是我們將 `compare`──其型別為 `(Ord a) => a -> a -> Ordering`──映射到一個字元 list，我們就得到一個型別為 `Char -> Ordering` 的 function 的 list，因為 `compare` 這個 function 被 list 中的字元部分應用。它不是個 `(Ord a) => a -> Ordering` function 的 list，因為被應用的第一個 `a` 是個 `Char`，所以第二個 `a` 的型別就必定為 `Char`。
+
+我們看到藉由將「多參數」function 映射到 functor，我們得到了在其中包含 function 的 functor。所以我們現在能用它們做什麼呢？首先，我們可以將取這些 function 作為參數的 function 映射到它們，因為無論在 functor 中的是什麼，都會被給予我們作為參數映射的 function。
+
+<pre name="code" class="haskell:ghci">
+ghci> let a = fmap (*) [1,2,3,4]
+ghci> :t a
+a :: [Integer -> Integer]
+ghci> fmap (\f -> f 9) a
+[9,18,27,36]
+</pre>
+
+但若是我們有個 `Just (3 *)` 的 functor 值、以及一個 `Just 5` 的 functor 值，而我們想要從 `Just (3 *)` 取出 function，並將它映射到 `Just 5` 呢？以一般的 functor 來說，我們不大幸運，因為它們支援的只有將一般的 function 映射到現有的 functor。即使在我們將 `\f -> f 9` 映射到一個在其中包含 function 的 functor 時，我們也只是將一個普通的 function 映射到這個 functor。但我們無法以 `fmap` 提供給我們的功能，將一個 functor 之中的 function 映射到另一個 functor。我們可以對 `Just` 建構子模式匹配以取出其中的 function、然後將它映射到 `Just 5`，但我們要尋找一個更通用、且抽象的方法來做到這件事，其適用於各種 functor。
+
+看看 `Applicative` typeclass。它位在 `Control.Applicative` 模組，且它定義了兩個 method，`pure` 與 `<*>`。它不為任何一個 method 提供預設實作，所以若是我們要讓某個東西作為一個 applicative functor，我們必須定義它們。class 像這樣被定義：
+
+<pre name="code" class="haskell:hs">
+class (Functor f) => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+</pre>
+
+這三行簡單的 class 定義告訴我們很多事！讓我們從第一行開始。它開始了 `Applicative` class 的定義，它也引入了一個類別限制。它表明，若是我們想要令一個型別建構子為 `Applicative` typeclass 的一員，它必須先在 `Functor` 中。這就是為什麼我們知道，若是一個型別建構子為 `Applicative` typeclass 的一員，它就也在 `Functor` 中，所以我們可以對它使用 `fmap`。
+
+它定義的第一個 method 叫做 `pure`。它的型別宣告為 `pure :: a -> f a`。在這裡 `f` 扮演著我們的 applicative functor 的角色。因為 Haskell 有個非常棒的型別系統，且因為一個 function 能做的只有取一些參數、並回傳一些值，所以我們可以從一個型別宣告判斷很多事，毫無例外。`pure` 需要取一個任何型別的值，並回傳一個在其中包含這個值的 applicative functor。當我們說<i>在其中（inside it）</i>時，我們再次使用了盒子類比，即使我們發現它並不總是經得起推敲。但 `a -> f a` 型別宣告仍然是十分具有描述性的。我們取一個值、並將它包在一個 applicative functor 中，它在其中擁有這個作為結果的值。
+
+一個思考 `pure` 的更好方式，是假定它取一個值、並將它放在某種預設（或是純粹的）情境──一個仍然產生這個值的最小情境──之中。
+
+`<*>` function 真的很有趣。它的型別宣告為 `f (a -> b) -> f a -> f b`。這有讓你回想起任何東西嗎？當然，`fmap :: (a -> b) -> f a -> f b`。它是一種改良的 `fmap`。`fmap` 取一個 function 與一個 functor，並將 function 應用到 functor 之中，而 `<*>` 則取一個在其中擁有一個 function 的 functor、與另一個 functor，並從第一個 functor 擷取這個 function，然後將它映射到第二個 functor。當我說擷取（extract）時，我所指的實際上是執行然後擷取，或許甚至要<i>串接（sequence）</i>。我們不久就會看到為什麼。
+
+讓我們看看 `Applicative` 為 `Maybe` 的實體實作。
+
+<pre name="code" class="haskell:hs">
+instance Applicative Maybe where
+    pure = Just
+    Nothing <*> _ = Nothing
+    (Just f) <*> something = fmap f something
+</pre>
+
+再一次的，我們從 class 定義看到扮演著 applicative functor 角色的 `f` 應該取一個具體型別作為參數，所以我們寫成 `instance Applicative Maybe where`，而非 `instance Applicative (Maybe a) where`。
+
+首先，`pure`。我們先前說過，它應該取某個值、並將它包在一個 applicative functor 中。我們寫了 `pure = Just`，因為像 `Just` 這種值建構子都是一般的 function。我們也可以寫成 `pure x = Just x`。
+
+接下來，我們有 `<*>` 的定義。我們無法從一個 `Nothing` 取出一個 function，因為在它之中並沒有 function。所以我們表明，若是我們試著從一個 `Nothing` 擷取一個 function，那麼結果就是一個 `Nothing`。若是你看到 `Applicative` 的 class 定義，你會發現這裡有個 `Functor` 型別限制，這代表我們可以假設 `<*>` 的兩個參數皆為 functor。若是第一個參數不是個 `Nothing`，而是一個在其中有某個 function 的 `Just`，我們就指定：我們這時要將這個 function 映射到第二個參數。這也考量到了第二個參數為 `Nothing` 的情況，因為以任何 function 對 `Nothing` 執行 `fmap` 都會回傳一個 `Nothing`。
+
+所以對於 `Maybe`，若是左值是一個 `Just`，`<*>` 就從中擷取 function，並將它映射到右值。若是任何參數為 `Nothing`，`Nothing` 就是結果。
+
+好，非常棒。讓我們來試試看。
+
+<pre name="code" class="haskell:ghci">
+ghci> Just (+3) <*> Just 9
+Just 12
+ghci> pure (+3) <*> Just 10
+Just 13
+ghci> pure (+3) <*> Just 9
+Just 12
+ghci> Just (++"hahah") <*> Nothing
+Nothing
+ghci> Nothing <*> Just "woot"
+Nothing
+</pre>
+
+我們看到在這種情況中，執行 `pure (+3)` 與 `Just (+3)` 是相同的。若是你要在一個 applicative 的情境中（即，以 `<*>` 使用它）處理 `Maybe` 值就使用 `pure`，除此之外就維持 `Just` 吧。前四行輸入顯示了 function 是如何被擷取、然後映射，但在這種情況中，它可以僅由將未被封裝的 function 映射到 functor 來達成。最後一行很有趣，因為我們試著從一個 `Nothing` 取出一個 function、然後將它映射到某值，這當然會產生一個 `Nothing`。
+
+以一般的 functor，你可以僅將一個 function 映射到一個 functor，但你無法以任何通用的方式來取出結果，即使結果為一個部分應用的 function。在另一方面，applicative functor 則允許你以單一個 function 操作多個 functor。看看這段程式碼：
+
+<pre name="code" class="haskell:ghci">
+ghci> pure (+) <*> Just 3 <*> Just 5
+Just 8
+ghci> pure (+) <*> Just 3 <*> Nothing
+Nothing
+ghci> pure (+) <*> Nothing <*> Just 5
+Nothing
+</pre>
+
+<img src="img/whale.png" alt="whaale" style="float:right" />
+這是怎麼回事？讓我們一步接著一步來看看。`<*>` 為左結合，這代表 `pure (+) <*> Just 3 <*> Just 5` 等同於 `(pure (+) <*> Just 3) <*> Just 5`。首先，`+` function 被放進一個 functor 中，這在這種情況中是一個包含 function 的 `Maybe` 值。所以首先，我們有 `pure (+)`，即為 `Just (+)`。接著，進行 `Just (+) <*> Just 3`。它的結果為 `Just (3+)`。這是因為部分應用的緣故。只將 `3` 應用到 `+` function 會產生一個取一個參數並加上 3 的 function。最後，`Just (3+) <*> Just 5` 被執行了，其會產生一個 `Just 8`。
+
+這不是很棒嗎？！applicative functor 與 applicative style 地執行 `pure f <*> x <*> y <*> ...`，允許我們取一個預期參數未必被包在 functor 中的 function，並使用這個 function 來操作多個在 functor 情境中的值。這個 function 可以取我們想要的那麼多參數，因為它總是在 `<*>` 之間，一步接著一步地被部分應用。
+
+若是我們考量到 `pure f <*> x` 等於 `fmap f x` 的事實，這會變得更加便利且明顯。這是其中一個 applicative 原則。我們會在之後更仔細地看看它們，但現在，我們可以稍微直覺地將它看作是這樣的東西。思考它，它很合理。像是我們之前說的，`pure` 將一個值放進一個預設情境中。若是我們僅將一個 function 放進一個預設情境中、然後擷取並應用它到一個在另一個 applicative functor 之中的值，我們做的與僅將這個 function 映射到這個 applicative functor 相同。我們可以寫成 `fmap f x <*> y <*> ...`，而非 `pure f <*> x <*> y <*> ...`。這就是為什麼 `Control.Applicative` 要輸出一個叫做 `<$>` 的 function，它僅是一個作為中綴運算子的 `fmap`。它是這樣被定義的：
+
+<pre name="code" class="haskell:hs">
+(<$>) :: (Functor f) => (a -> b) -> f a -> f b
+f <$> x = fmap f x
+</pre>
+
+<p class="hint">
+<em>呦！</em>快速提醒：型別變數是與參數名稱、或是其它的值的名稱獨立的。在這裡的 function 宣告中的 <code>f</code> 為一個型別變數，帶著一個表明任何取代 <code>f</code> 的型別建構子都應該在 <code>Functor</code> typeclass 中的類別限制。在 function 主體中的 <code>f</code> 表示一個我們映射到 <code>x</code> 的 function。事實是，我們使用 <code>f</code> 來表示這兩者，並不代表它們在某種層面表示相同的東西。
+</p>
+
+藉由使用 `<$>`，applicative style 就十分耀眼了，因為現在若是我們想要將一個 function `f` 應用到三個 applicative functor 之間，我們可以寫成 `f <$> x <*> y <*> z`。若是參數並非 applicative functor，而是一般的值，我們就寫成 `f x y z`。
+
+讓我們更仔細地看看它是如何運作的。我們有個 `Just "johntra"` 的值、與一個 `Just "volta"` 的值，我們想要將它們結合成一個在一個 `Maybe` functor 之中的 `String`。我們這樣做：
+
+<pre name="code" class="haskell:ghci">
+ghci> (++) <$> Just "johntra" <*> Just "volta"
+Just "johntravolta"
+</pre>
+
+在我們看看這是怎麼回事之前，先把上面那行跟這個比較一下：
+
+<pre name="code" class="haskell:ghci">
+ghci> (++) "johntra" "volta"
+"johntravolta"
+</pre>
+
+真棒！要對 applicative functor 使用一般的 function，只要點綴一些 `<$>` 與 `<*>`，這個 function 就會操作 applicative、並回傳一個 applicative。這不是很棒嗎？
+
+總而言之，當我們 `(++) <$> Just "johntra" <*> Just "volta"` 時，`(++)`──其型別為 `(++) :: [a] -> [a] -> [a]`──先被映射到了 `Just "johntra"`，產生一個等同於 `Just ("johntra"++)`、且型別為 `Maybe ([Char] -> [Char])` 的值。注意到 `(++)` 的第一個參數是如何被吃掉、以及 `a` 是如何被轉成 `Char` 的。現在執行 `Just ("johntra"++) <*> Just "volta"`，其從 `Just` 取出 function、並將它映射到 `Just "volta"`，產生 `Just "johntravolta"`。假使這兩個值的任何一個為 `Nothing`，則結果也會是 `Nothing`。
+
+到目前為止，我們在我們的例子中只使用過 `Maybe`，你可能會認為 applicative functor 全都跟 `Maybe` 有關。這裡有一堆其它的 `Applicative` 實體，所以讓我們看看它們吧！
+
+list（實際上是 list 型別建構子，`[]`）為 applicative functor。真令人驚訝！以下是 `[]` 是如何為一個 `Applicative` 實體的：
+
+<pre name="code" class="haskell:hs">
+instance Applicative [] where
+    pure x = [x]
+    fs <*> xs = [f x | f <- fs, x <- xs]
+</pre>
+
+先前，我們說過 `pure` 取一個值，並將它放進一個預設情境中。或者換句話說，一個仍然產生這個值的最小情境。對於 list 的最小情境為空 list，`[]`，但空 list 代表缺少值，所以它本身不能持有我們使用在 `pure` 的值。這就是為什麼 `pure` 要取一個值、並將它放進一個單一元素的 list 中。同樣的，對於 `Maybe` applicative functor 的最小情境會是個 `Nothing`，但它表示缺少一個值、而非一個值，所以 `pure` 在 `Maybe` 的實體實作中被實作成 `Just`。
+
+<pre name="code" class="haskell:ghci">
+ghci> pure "Hey" :: [String]
+["Hey"]
+ghci> pure "Hey" :: Maybe String
+Just "Hey"
+</pre>
+
+`<*>` 怎麼樣呢？若是我們看看 `<*>` 在它被限制在只處理 list 時的型別會是什麼，我們會得到 `(<*>) :: [a -> b] -> [a] -> [b]`。它以一個 [list comprehension](starting-out#im-a-list-comprehension) 實作。`<*>` 必須在某種層面上從它的左參數擷取出 function，然後將它映射到右參數。但這裡的情況是，左邊的 list 可能在其中包含零個 function、一個 function、或是多個 function。右邊的 list 可能也持有多個值。這就是為什麼我們要使用 list comprehension 來從兩個 list 取值。我們將每個左 list 中的可能的 function 應用到右 list 的每個可能的值。產生的 list 擁有將左 list 中的 function 應用到右 list 中的值的所有可能組合。
+
+<pre name="code" class="haskell:ghci">
+ghci> [(*0),(+100),(^2)] <*> [1,2,3]
+[0,0,0,101,102,103,1,4,9]
+</pre>
+
+左邊的 list 有三個 function，右邊的 list 有三個值，所以產生的 list 將會有九個元素。每個在左 list 的 function 都被應用到每個在右邊的值。若是我們有個取兩個參數的 function 的 list，我們可以將這些 function 應用到兩個 list。
+
+<pre name="code" class="haskell:ghci">
+ghci> [(+),(*)] <*> [1,2] <*> [3,4]
+[4,5,5,6,3,4,6,8]
+</pre>
+
+因為 `<*>` 是左結合的，所以 `[(+),(*)] <*> [1,2]` 會先執行，產生一個等同於 `[(1+),(2+),(1*),(2*)]` 的 list，因為在左邊的每個 function 都被應用到每個在右邊的值。接著，執行 `[(1+),(2+),(1*),(2*)] <*> [3,4]`，其產生最終的結果。
+
+以 list 使用 applicative style 是很有趣的！看：
+
+<pre name="code" class="haskell:ghci">
+ghci> (++) <$> ["ha","heh","hmm"] <*> ["?","!","."]
+["ha?","ha!","ha.","heh?","heh!","heh.","hmm?","hmm!","hmm."]
+</pre>
+
+再一次，看看我們如何藉由插入適當的 applicative 運算子，以在兩個字串的 applicative functor 之間，使用接收兩個字串的普通 function。
+
+你可以將 list 看成非確定性（non-deterministic）計算。一個像是 `100` 或 `"what"` 的值可以被看作一個只會有一種結果的確定性計算，而一個像是 `[1,2,3]` 的 list 可以被看作一個無法決定它想要的是哪個結果的計算，所以它提供給我們所有可能的結果。所以當你做某個像是 `(+) <$> [1,2,3] <*> [4,5,6]` 這樣的事，你可以將它想成以 `+` 加總兩個非確定性計算，只不過產生了另一個更不確定其結果的非確定計算。
+
+對 list 使用 applicative style，經常是個 list comprehension 的不錯的替代品。在第二章，我們想看看 `[2,5,10]` 與 `[8,10,11]` 的所有可能的乘積，所以我們這樣做：
+
+<pre name="code" class="haskell:ghci">
+ghci> [ x*y | x <- [2,5,10], y <- [8,10,11]]
+[16,20,22,40,50,55,80,100,110]
+</pre>
+
+我們從兩個 list 取值，並將一個 function 應用到元素的每個組合之間。這也可以以 applicative style 來做到：
+
+<pre name="code" class="haskell:ghci">
+ghci> (*) <$> [2,5,10] <*> [8,10,11]
+[16,20,22,40,50,55,80,100,110]
+</pre>
+
+這對我來說看起來比較清楚，因為它更容易看到我們只是在兩個非確定性計算之間呼叫 `*`。若是我們想要這兩個 list 所有大於 50 的可能乘積，我們只要執行：
+
+<pre name="code" class="haskell:ghci">
+ghci> filter (>50) $ (*) <$> [2,5,10] <*> [8,10,11]
+[55,80,100,110]
+</pre>
+
+要理解對於 list，為何 `pure f <*> xs` 等於 `fmap f xs` 是很容易的。`pure f` 僅是 `[f]`，且 `[f] <*> xs` 會將每個在左 list 中的 function 應用到每個在右 list 的值，但這裡只有一個 function 在左 list 中，所以它就像是映射。
+
+我們已經遇過的另一個 `Applicative` 實體是 `IO`。這個實體是這樣被定義的：
+
+<pre name="code" class="haskell:hs">
+instance Applicative IO where
+    pure = return
+    a <*> b = do
+        f <- a
+        x <- b
+        return (f x)
+</pre>
+
+<img src="img/knight.png" alt="ahahahah!" style="float:left" />
+由於 `pure` 是將一個值放進一個仍會持有它作為結果的最小情境中，所以 `pure` 僅為 `return` 是很合理的，因為 `return` 正是這麼做的；它建立一個不做任何事的 I/O 動作，它僅產生一些值作為它的結果，但它不會真的做任何像是印到終端機、或是從一個檔案進行讀取這類 I/O 操作。
+
+若 `<*>` 是專門針對 `IO` 的，它的型別將會是 `(<*>) :: IO (a -> b) -> IO a -> IO b`。它會取一個產生一個 function 作為其結果的 I/O 動作、與另一個 I/O 動作，並由這兩個 I/O 動作建立一個新的 I/O 動作，其執行時會先執行第一個 I/O 動作以得到 function、然後執行第二個 I/O 動作以得到值，接著它會產生將這個 function 應用到值的結果作為結果。這裡我們使用 <i>do</i> 語法來實作它。記住，<i>do</i> 語法會取多個 I/O 動作，並將它們結合成一個，這正好就是我們在這裡所做的。
+
+對於 `Maybe` 與 `[]`，我們可以將 `<*>` 想成簡單地從它左邊的參數擷取一個 function，然後將它應用到右邊的參數。對於 `IO`，擷取動作仍然牽涉在其中，但現在我們也有個串接的概念，因為我們取了兩個 I/O 動作，並將它們串接、或是結合成一個。我們必須從第一個 I/O 動作擷取 function，但為了要從一個 I/O 動作擷取結果，它必須被執行。
+
+考慮這個：
+
+<pre name="code" class="haskell:hs">
+myAction :: IO String
+myAction = do
+    a <- getLine
+    b <- getLine
+    return $ a ++ b
+</pre>
+
+這是一個將會提示使用者輸入兩行、並產生串接的這兩行作為它的結果的 I/O 動作。我們藉由將兩個 `getLine` I/O 動作與一個 `return` 結合在一起來達成，因為我們想讓我們新結合成的 I/O 動作持有 `a ++ b` 的結果。另一種撰寫這種功能的方式是使用 applicative style。
+
+<pre name="code" class="haskell:hs">
+myAction :: IO String
+myAction = (++) <$> getLine <*> getLine
+</pre>
+
+我們先前所做的是建立一個 I/O 動作，其將一個 function 應用到其它兩個 I/O 動作的結果之間，而這段程式也是相同的。記得，`getLine` 為一個帶著 `getLine :: IO String` 型別的 I/O 動作。當我們在兩個 applicative functor 之間使用 `<*>` 時，結果就為一個 applicative functor，所以這一切都很合理。
+
+若是我們回歸到盒子類比，我們可以將 `getLine` 想像成一個會走到真實世界、並將一個字串取回給我們的盒子。執行 `(++) <$> getLine <*> getLine` 會建立一個新的、比較大的盒子，它將這兩個盒子送出去以從終端機取得幾行，然後將這兩行的串接作為它的結果呈獻。
+
+`(++) <$> getLine <*> getLine` 這個 expression 的型別為 `IO String`，這代表這個 expression 為一個十分普通的 I/O 動作，就像任何其它的 I/O 動作一樣。它也在其中持有一個結果值，就像是其它的 I/O 動作。這就是為什麼我們可以像這樣做：
+
+<pre name="code" class="haskell:hs">
+main = do
+    a <- (++) <$> getLine <*> getLine
+    putStrLn $ "The two lines concatenated turn out to be: " ++ a
+</pre>
+
+若是你曾經發現，你自己將某些 I/O 動作綁定到名稱，然後對它們呼叫某些 function，並使用 `return` 將這作為結果呈獻，就考慮使用 applicative style 吧，因為它可以說是稍微簡潔與精鍊一些。
+
+另一個 `Applicative` 的實體為 `(->) r`，即 function。它除了在 code golf<span class="note">（譯註：<http://codegolf.com/>）</span>之外很少以 applicative style 使用，但它作為 applicative 仍然很有趣，所以讓我們看看 function 實體是如何實作的。
+
+<p class="hint">
+如果你被 <code>(->) r</code> 代表什麼給搞混了，就看看先前我們解釋 <code>(->) r</code> 如何作為一個 functor 的那節吧。
+</p>
+
+<pre name="code" class="haskell:hs">
+instance Applicative ((->) r) where
+    pure x = (\_ -> x)
+    f <*> g = \x -> f x (g x)
+</pre>
+
+當我們把一個值以一個 `pure` 包進一個 applicative functor 中時，它產生的結果永遠必須是這個值。一個仍然產生這個值作為結果的最小預設情境。這就是為什麼在 function 實體實作中，`pure` 要取一個值，並建立一個忽略其參數、並總是回傳這個值的 function。若是我們看看 `pure` 專門針對 `(->) r` 實體的型別，即為 `pure :: a -> (r -> a)`。
+
+<pre name="code" class="haskell:ghci">
+ghci> (pure 3) "blah"
+3
+</pre>
+
+由於 currying，function application 是左結合的，所以我們可以省略括號。
+
+<pre name="code" class="haskell:ghci">
+ghci> pure 3 "blah"
+3
+</pre>
+
+`<*>` 的實體實作有一點神祕，所以若是我們只看看要如何以 applicative 將 function 用作 applicative functor 是最好的。
+
+<pre name="code" class="haskell:ghci">
+ghci> :t (+) <$> (+3) <*> (*100)
+(+) <$> (+3) <*> (*100) :: (Num a) => a -> a
+ghci> (+) <$> (+3) <*> (*100) $ 5
+508
+</pre>
+
+以兩個 applicative functor 呼叫 `<*>` 會產生一個 applicative functor，所以若是我們對兩個 function 使用它，我們會取回一個 function。所以這裡是怎麼回事？當我們執行 `(+) <$> (+3) <*> (*100)` 時，我們建立了一個將會對 `(+3)` 與 `(*100)` 的結果使用 `+`、並回傳結果的 function。以實際的例子說明，當我們執行 `(+) <$> (+3) <*> (*100) $ 5` 時，`5` 先被應用到 `(+3)` 與 `(*100)`，產生 `8` 與 `500`。接著，以 `8` 與 `500` 呼叫 `+`，產生 `508`。
+
+<pre name="code" class="haskell:ghci">
+ghci> (\x y z -> [x,y,z]) <$> (+3) <*> (*2) <*> (/2) $ 5
+[8.0,10.0,2.5]
+</pre>
+
+<img src="img/jazzb.png" alt="SLAP" style="float:right" />
+這裡也相同。我們建立了一個將會以 `(+3)`、`(*2)` 與 `(/2)` 的最終結果呼叫 function `\x y z -> [x,y,z]` 的 function。`5` 被餵給了這三個 function，然後以這些結果呼叫 `\x y z -> [x, y, z]`。
+
+你可以將 function 想成一個包含其最終結果的盒子，所以執行 `k <$> f <*> g` 會建立一個將會以 `f` 與 `g` 的最終結果呼叫 `k` 的 function。當我們進行像是 `(+) <$> Just 3 <*> Just 5` 時，我們對可能在或可能不在這裡的值使用 `+`，其也會產生一個可能在或可能不在這裡的值。當我們執行 `(+) <$> (+10) <*> (+5)` 時，我們對 `(+10)` 與 `(+5)` 未來的回傳值使用 `+`，結果也是某個只有在以一個參數呼叫它的時候才會產生一個值的東西。
+
+我們通常不會將 function 用作 applicative，但這依然十分有趣。你瞭解對於 `Applicative` 的 `(->) r` 實體如何運作並不是很重要，所以若是你當前無法瞭解它也別氣餒。試著把玩 applicative style 與 function，以建立 functions 作為 applicative 的感覺。
+
+一個我們還不曾遇過的 `Applicative` 實體為 `ZipList`，它位在 `Control.Applicative` 中。
+
+結果證明，實際上 list 還有更多作為 applicative functor 的方式。一種方式是我們已經提過的，其表明以一個 function 的 list 與一個值的 list 呼叫 `<*>` 會產生一個擁有將左 list 的 function 應用到右 list 的值的所有可能組合的 list。若是我們執行 `[(+3),(*2)] <*> [1,2]`，`(+3)` 就會被應用到 `1` 與 `2`，且 `(*2)` 也會被應用到 `1` 與 `2`，產生一個有著四個元素的 list，即 `[4,5,2,4]`。
+
+然而，`[(+3),(*2)] <*> [1,2]` 也能夠以這種方式運作：將左 list 中的第一個 function 應用到右 list 中的第一個值、將左 list 中的第二個 function 應用到右 list 中的第二個值、以此類推。這會產生一個有兩個值的 list，即 `[4,4]`。你可以將它看作 `[1 + 3, 2 * 2]`。
+
+因為一個型別無法有兩個相同 typeclass 的實體，於是 `ZipList a` 就被引入了，其有一個只有一個欄位的建構子 `ZipList`，而這個欄位為一個 list。以下即是這個實體：
+
+<pre name="code" class="haskell:hs">
+instance Applicative ZipList where
+        pure x = ZipList (repeat x)
+        ZipList fs <*> ZipList xs = ZipList (zipWith (\f x -> f x) fs xs)
+</pre>
+
+`<*>` 所做的就是我們所說的了。它將第一個 function 應用到第一個值、將第二個 function 應用到第二個值、以此類推。這以 `zipWith (\f x -> f x) fs xs` 來達成。因為 `zipWith` 是如此運作的，所以產生的 list 將會與兩個 list 中較短者一樣長。
+
+這裡的 `pure` 也很有趣。它取一個值、並將它放進一個僅有這個值無限重複的 list 中。`pure "haha"` 產生 `ZipList (["haha","haha","haha"...`。這可能有點令人困惑，因為我們說過 `pure` 應該要把值放進一個仍會產生這個值的最小情境中。你或許認為一個某值的無限 list 根本就不是最小的。但這對 zip list 是合理的，因為它必須在任何位置產生值。這也滿足 `pure f <*> xs` 應該等於 `fmap f xs` 的原則。若是 `pure 3` 僅回傳 `ZipList [3]`，`pure (*2) <*> ZipList [1,5,10]` 就會產生 `ZipList [2]`，因為兩個 zip list 產生的 list 的長度為兩者中較短者的長度。若是我們以一個無限的 list 扣上一個有限的 list，產生的 list 長度就永遠會等於有限的 list 的長度。
+
+所以 zip list 是如何以 applicative style 運作的呢？讓我們看看。喔，`ZipList a` 型別沒有 `Show` 實體，所以我們必須使用 <code class="label function">getZipList</code> function 來從一個 zip list 擷取出一個 raw list。
+
+<pre name="code" class="haskell:ghci">
+ghci> getZipList $ (+) <$> ZipList [1,2,3] <*> ZipList [100,100,100]
+[101,102,103]
+ghci> getZipList $ (+) <$> ZipList [1,2,3] <*> ZipList [100,100..]
+[101,102,103]
+ghci> getZipList $ max <$> ZipList [1,2,3,4,5,3] <*> ZipList [5,3,1,2]
+[5,3,3,4]
+ghci> getZipList $ (,,) <$> ZipList "dog" <*> ZipList "cat" <*> ZipList "rat"
+[('d','c','r'),('o','a','a'),('g','t','t')]
+</pre>
+
+<p class="hint">
+<code>(,,)</code> function 等同於 <code>\x y z -> (x,y,z)</code>。同樣的，<code>(,)</code> function 等同於 <code>\x y -> (x,y)</code>。
+</p>
+
+除了 `zipWith`，標準函式庫也有像是 `zipWith3`、`zipWith4`、一路到 7 的 function。`zipWith` 取一個接收兩個參數的 function，並以它扣上兩個 list。`zipWith3` 取一個接收三個參數的 function，並以它扣上三個 list，以此類推。
+藉由以 applicative style 來使用 zip list，對於每個我們想要扣在一起的 list，我們就不必有個個別的 zip function。我們只要使用 applicative style 來將任意數量的 list 以一個 function 扣在一起，這樣非常好。
+
+`Control.Applicative` 定義了一個叫做 <code class="label function">liftA2</code> 的 function，其型別為 `liftA2 :: (Applicative f) => (a -> b -> c) -> f a -> f b -> f c`。它像這樣被定義。
+
+<pre name="code" class="haskell:hs">
+liftA2 :: (Applicative f) => (a -> b -> c) -> f a -> f b -> f c
+liftA2 f a b = f <$> a <*> b
+</pre>
+
+沒什麼特別的，它僅將一個 function 應用到兩個 applicative 之間，隱藏我們已熟悉的 applicative style。
+我們察看它的原因，是因為它清楚地顯示了為什麼 applicative functor 比起普通的 functor 是比較強大的。以普通的 functor，我們只能將 function 映射到一個 functor。但以 applicative functor，我們可以將一個 function 應用到多個 functor 之間。把這個 function 的型別看成 `(a -> b -> c) -> (f a -> f b -> f c)` 也很有趣。當我們像這樣來看它時，我們可以說 `liftA2` 取一個普通的二元 function，並將它升級成一個操作兩個 functor 的 function。
+
+這裡有個有趣的概念：我們可以取兩個 applicative functor，並將它們結合成一個 applicative functor，在其中有著在一個 list 中的這兩個 applicative functor 的結果。舉例來說，我們有 `Just 3` 與 `Just 4`。讓我們假設第二個 applicative functor 之中有一個單一元素的 list，因為要達成非常容易：
+
+<pre name="code" class="haskell:ghci">
+ghci> fmap (\x -> [x]) (Just 4)
+Just [4]
+</pre>
+
+好，所以讓我們假定我們有 `Just 3` 與 `Just [4]`。我們要如何取得 `Just [3,4]` 呢？簡單。
+
+<pre name="code" class="haskell:ghci">
+ghci> liftA2 (:) (Just 3) (Just [4])
+Just [3,4]
+ghci> (:) <$> Just 3 <*> Just [4]
+Just [3,4]
+</pre>
+
+記住，`:` 為一個取一個元素、與一個 list，並回傳一個帶著這個位在開頭的元素的 list 的 function。現在我們有 `Just [3,4]` 了，我們能夠以 `Just 2` 結合它，以產生 `Just [2,3,4]` 嗎？我們當然可以。我們似乎能夠將任意數量的 applicative 結合成一個其中有著這些 applicative 的結果的 list 的 applicative。讓我們試著實作一個 function，其取一個 applicative 的 list，並回傳一個擁有一個 list 作為它的回傳值的 applicative。我們要稱它為 `sequenceA`。
+
+<pre name="code" class="haskell:hs">
+sequenceA :: (Applicative f) => [f a] -> f [a]
+sequenceA [] = pure []
+sequenceA (x:xs) = (:) <$> x <*> sequenceA xs
+</pre>
+
+啊，遞迴！首先，我們看看型別。它會把一個 applicative 的 list 轉成一個帶著一個 list 的 applicative。藉此，我們可以為邊界條件奠定一些基礎。若是我們想要將一個空 list 轉成一個帶著結果的 list 的 applicative，嗯，我們只要將一個空 list 擺進一個預設情境中。現在輪到遞迴了。
+若是我們有個有著 head 與 tail 的 list（記住，`x` 為一個 applicative，`xs` 為一個它們的 list），我們就對 tail 呼叫 `sequenceA`，其產生一個帶著一個 list 的 applicative。接著，我們僅將 applicative `x` 之中的值前置在這個帶著一個 list applicative 之前，就這樣！
+
+所以若是我們執行 `sequenceA [Just 1, Just 2]`，即是 `(:) <$> Just 1 <*> sequenceA [Just 2]`。這等於 `(:) <$> Just 1 <*> ((:) <$> Just 2 <*> sequenceA [])`。啊！
+我們知道 `sequenceA []` 最終會變成 `Just []`，所以這個 expression 現在是 `(:) <$> Just 1 <*> ((:) <$> Just 2 <*> Just [])`，即是 `(:) <$> Just 1 <*> Just [2]`，即是 `Just [1,2]`！
+
+另一種實作 `sequenceA` 的方式是使用折疊。記得，幾乎任何我們用以一個元素接著一個元素走過一個 list、並一路累加結果的 function，都能夠以折疊來實作。
+
+<pre name="code" class="haskell:hs">
+sequenceA :: (Applicative f) => [f a] -> f [a]
+sequenceA = foldr (liftA2 (:)) (pure [])
+</pre>
+
+我們從右邊開始逼近 list，並以 `pure []` 的累加值開始。
+我們在累加器與 list 的最後一個元素之間執行 `liftA2 (:)`，其產生一個有個單一元素在其中的 applicative。接著我們以當前最後一個元素與目前的累加器執行 `liftA2 (:)`，以此類推，直到我們只剩下累加器──其持有一個所有 applicative 的結果的 list──為止。
+
+讓我們用一些 applicative 來試試我們的 function。
+
+<pre name="code" class="haskell:ghci">
+ghci> sequenceA [Just 3, Just 2, Just 1]
+Just [3,2,1]
+ghci> sequenceA [Just 3, Nothing, Just 1]
+Nothing
+ghci> sequenceA [(+3),(+2),(+1)] 3
+[6,5,4]
+ghci> sequenceA [[1,2,3],[4,5,6]]
+[[1,4],[1,5],[1,6],[2,4],[2,5],[2,6],[3,4],[3,5],[3,6]]
+ghci> sequenceA [[1,2,3],[4,5,6],[3,4,4],[]]
+[]
+</pre>
+
+啊！非常好。當使用在 `Maybe` 值時，`sequenceA` 以所有在其中的結果作為一個 list，建立了一個 `Maybe` 值。若是其中一個值為 `Nothing`，則結果也會是個 `Nothing`。當你有個 `Maybe` 值的 list，且你只有在沒有值是 `Nothing` 時才對這些值有興趣的時候，這是很棒的。
+
+當以 function 使用時，`sequenceA` 會取一個 function 的 list，並回傳一個回傳一個 list 的 function。在我們的例子中，我們建立了一個 function，其取一個數字作為參數、將它應用到 list 中的每個 function、然後回傳結果的 list。`sequenceA [(+3),(+2),(+1)] 3` 將會以 `3` 呼叫 `(+3)`、以 `3` 呼叫 `(+2)`、以 `3` 呼叫 `(+1)`，並將所有結果作為一個 list 呈獻。
+
+執行 `(+) <$> (+3) <*> (*2)` 將會建立一個取一個參數、將它餵給 `(+3)` 與 `(*2)`、然後以這兩個結果呼叫 `+` 的 function。同理，`sequenceA [(+3),(*2)]` 會建立一個將會取一個參數、並將它餵給所有在 list 中的 function 的 function 是很合理的。並非以 function 的結果呼叫 `+`，`:` 與 `pure []` 的結合被用來將這些結果收集到一個 list 中，這即是這個 function 的結果。
+
+當我們有個 function 的 list，而我們想要將相同的輸入餵給它們、然後檢視結果的 list 時，使用 `sequenceA` 是很棒的。舉例來說，我們有一個數字，並且我們很好奇它是否滿足所有在一個 list 中的述部。做到這件事的一種方式會像這樣：
+
+<pre name="code" class="haskell:ghci">
+ghci> map (\f -> f 7) [(>4),(<10),odd]
+[True,True,True]
+ghci> and $ map (\f -> f 7) [(>4),(<10),odd]
+True
+</pre>
+
+記住，`and` 取一個布林 list，並在它們全都為 `True` 時回傳 `True`。另一個做到相同事情的方式是使用 `sequenceA`：
+
+<pre name="code" class="haskell:ghci">
+ghci> sequenceA [(>4),(<10),odd] 7
+[True,True,True]
+ghci> and $ sequenceA [(>4),(<10),odd] 7
+True
+</pre>
+
+`sequenceA [(>4),(<10),odd]` 建立一個將會取一個數字、將它餵給 `[(>4),(<10),odd]` 中的所有述部、並回傳一個布林 list。它將一個帶著 `(Num a) => [a -> Bool]` 型別的 list 轉成帶著 `(Num a) => a -> [Bool]` 型別的 function。非常棒，哈？
+
+因為 list 是同質的，所以所有在 list 中的 function 都必須為相同型別的 function，當然。你無法有個像是 `[ord, (+3)]` 的 list，因為 `ord` 取一個字元並回傳一個數字，而 `(+3)` 則取一個數字並回傳一個數字。
+
+當以 `[]` 使用時，`sequenceA` 取一個 list 的 list，並回傳一個 list 的 list。唔，有趣。它實際上建立了一個擁有它們元素的所有可能組合的 list。為了說明，以下是以 `sequenceA`、接著以一個 list comprehension 來達成上面所說的：
+
+<pre name="code" class="haskell:ghci">
+ghci> sequenceA [[1,2,3],[4,5,6]]
+[[1,4],[1,5],[1,6],[2,4],[2,5],[2,6],[3,4],[3,5],[3,6]]
+ghci> [[x,y] | x <- [1,2,3], y <- [4,5,6]]
+[[1,4],[1,5],[1,6],[2,4],[2,5],[2,6],[3,4],[3,5],[3,6]]
+ghci> sequenceA [[1,2],[3,4]]
+[[1,3],[1,4],[2,3],[2,4]]
+ghci> [[x,y] | x <- [1,2], y <- [3,4]]
+[[1,3],[1,4],[2,3],[2,4]]
+ghci> sequenceA [[1,2],[3,4],[5,6]]
+[[1,3,5],[1,3,6],[1,4,5],[1,4,6],[2,3,5],[2,3,6],[2,4,5],[2,4,6]]
+ghci> [[x,y,z] | x <- [1,2], y <- [3,4], z <- [5,6]]
+[[1,3,5],[1,3,6],[1,4,5],[1,4,6],[2,3,5],[2,3,6],[2,4,5],[2,4,6]]
+</pre>
+
+這可能有點難以領會，但若是你用它把玩了一會，你就會發現它是怎麼運作的了。讓我們假定我們做的是 `sequenceA [[1,2],[3,4]]`。為了看看這是怎麼回事，讓我們使用 `sequenceA` 的 `sequenceA (x:xs) = (:) <$> x <*> sequenceA xs`、以及邊界條件 `sequenceA [] = pure []` 的定義。你不必遵循這個求值方法，但若是你在想像 `sequenceA` 如何運作在 list 的 list 時出了問題，這可能會有用的，因為它可能有點令人費解。
+
+* 我們以 `sequenceA [[1,2],[3,4]]` 開始
+* 計算結果為 `(:) <$> [1,2] <*> sequenceA [[3,4]]`
+* 進一步求值內部的 `sequenceA`，我們得到 `(:) <$> [1,2] <*> ((:) <$> [3,4] <*> sequenceA [])`
+* 我們抵達邊界條件，所以它現在為 `(:) <$> [1,2] <*> ((:) <$> [3,4] <*> [[]])`
+* 現在，我們要計算 `(:) <$> [3,4] <*> [[]]` 部分，其會以在左 list 的每個可能值（可能值為 `3` 與 `4`）與在右 list 的所有可能值（唯一的可能值為 `[]`）使用 `:`，這會產生 `[3:[], 4:[]]`，即是 `[[3],[4]]`。所以現在我們有 `(:) <$> [1,2] <*> [[3],[4]]`
+* 現在，`:` 被用在左 list 的所有可能值（`1` 與 `2`）與右 list 中的所有可能值（`[3]` 與 `[4]`），其結果為 `[1:[3], 1:[4], 2:[3], 2:[4]]`，即是 `[[1,3],[1,4],[2,3],[2,4]`
+
+執行 `(+) <$> [1,2] <*> [4,5,6]` 會產生一個非確定性計算 `x + y`，其中 `x` 接收每個來自 `[1,2]` 的值、`y` 接收每個來自 `[4,5,6]` 的值。我們將它表示成一個持有所有可能結果的 list。相同的，當我們執行 `sequence [[1,2],[3,4],[5,6],[7,8]]` 時，結果為一個非確定性計算 `[x,y,z,w]`，其中 `x` 接收每個來自 `[1,2]` 的值、`y` 接收每個來自 `[3,4]` 的值，以此類推。為了要表示這個非確定性計算的結果，我們使用一個 list，其中每個在 list 中的元素都是一個可能的 list。這就是為什麼結果是一個 list 的 list。
+
+以 I/O 動作使用時，`sequenceA` 是與 `sequence` 相同的東西！它取一個 I/O 動作的 list，並回傳一個將會執行這些動作、並以這些 I/O 動作的結果的 list 作為它的結果的 I/O 動作。這是因為，為了要將一個 `[IO a]` 值轉成一個 `IO [a]` 值、為了讓一個 I/O 動作在執行時產生結果的 list，所有這些 I/O 動作都必須被串接，以讓它們能在被強迫求值時一個接著一個執行。你無法在不執行一個 I/O 動作的情況下取得它的結果。
+
+<pre name="code" class="haskell:ghci">
+ghci> sequenceA [getLine, getLine, getLine]
+heyh
+ho
+woo
+["heyh","ho","woo"]
+</pre>
+
+如同一般的 functor，applicative functor 也有著一些原則。最重要的一個，是我們已經提過的，即是 <code class="label law">pure f <*> x = fmap f x</code> 成立。作為練習，你可以為一些我們在這一章所遇過的 applicative functor 證明這個原則。其它的原則是：
+
+* <code class="label law">pure id <\*> v = v</code>
+* <code class="label law">pure (.) <\*> u <\*> v <\*> w = u <\*> (v <\*> w)</code>
+* <code class="label law">pure f <\*> pure x = pure (f x)</code>
+* <code class="label law">u <\*> pure y = pure ($ y) <\*> u</code>
+
+我們當前不會仔細察看它們，因為這會花上許多篇幅，而且它或許有點無聊，但若是你能勝任這個任務，你可以更仔細地看看它們，並看看它們對於一些實體是否成立。
+
+總結一下，applicative functor 不只有趣、它們也很有用，因為它們允許我們藉由 applicative style 結合不同的計算，像是 I/O 計算、非確定性計算、可能會失敗的計算、等等。只要使用 `<$>` 與 `<*>`，我們就能使用普通的 function 來一致地操作各種 applicative functor，並充分利用每一個 applicative functor 的語義。
 
 ## <a name="the-newtype-keyword">newtype 關鍵字</a>
 
