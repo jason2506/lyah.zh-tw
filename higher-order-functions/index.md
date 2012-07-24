@@ -67,7 +67,7 @@ compareWithHundred = compare 100
 <em>呦！</em>確保你相當瞭解 curried function 與 partial application 如何運作，因為他們非常重要！
 </p>
 
-中綴 function 也可以藉由分段（section）被部分應用。為了要分段一個中綴 function，只要將它用括號包起來，並只提供一邊的參數。這會建立一個接收一個參數，然後將它套用在缺少運算元的那一邊的 function。一個十分簡單的 function 如下：
+中綴 function 也可以藉由使用 section 被部分應用。為了要 section 一個中綴 function，只要將它用括號包起來，並只提供一邊的參數。這會建立一個接收一個參數，然後將它套用在缺少運算元的那一邊的 function。一個十分簡單的 function 如下：
 
 <pre name="code" class="haskell:hs">
 divideByTen :: (Floating a) => a -> a
@@ -81,7 +81,7 @@ isUpperAlphanum :: Char -> Bool
 isUpperAlphanum = (`elem` ['A'..'Z'])
 </pre>
 
-使用 `-` 是分段唯一特別的地方。由分段的定義，`(-4)` 會產生一個接收一個數字並將其減掉 4 的 function。然而，為了方便起見，`(-4)` 代表負四。所以若是你想要建立一個將作為參數的數字減掉 4 的 function，就對 `subtract` function 做部分應用，像這樣：`(subtract 4)`。
+使用 `-` 是 section 唯一特別的地方。由 section 的定義，`(-4)` 會產生一個接收一個數字並將其減掉 4 的 function。然而，為了方便起見，`(-4)` 代表負四。所以若是你想要建立一個將作為參數的數字減掉 4 的 function，就對 `subtract` function 做部分應用，像這樣：`(subtract 4)`。
 
 若是我們嘗試在 GHCI 中要執行 `multThree 3 4`，而不是用 <i>let</i> 將它綁定到一個名稱上，或是傳遞到另一個 function 會發生什麼呢？
 
