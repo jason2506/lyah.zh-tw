@@ -752,4 +752,238 @@ woo
 
 ## <a name="the-newtype-keyword">newtype 關鍵字</a>
 
+<img src="img/maoi.png" alt="why_ so serious?" style="float:left" />
+到目前為止，我們已經學過如何使用 *data* 關鍵字來建立我們自己的代數資料型別。我們也學過如何以 *type* 關鍵字來給予現存的型別同義詞。在這一節，我們要在一開始看看如何使用 *newtype* 關鍵字來讓現有的資料型別變成一個新型別，以及為什麼我們想要這麼做。
+
+在前一節，我們發現對於 list 型別，實際上有很多作為一個 applicative functor 的方式。一種方式是讓 `<*>` 從它左參數的 list 取出每個 function、並將它應用到右參數 list 中的每個值，產生左 list 中的 function 應用到右 list 中的值的所有可能組合。
+
+<pre name="code" class="haskell:ghci">
+ghci> [(+1),(*100),(*5)] <*> [1,2,3]
+[2,3,4,100,200,300,5,10,15]
+</pre>
+
+第二種方式是取 `<*>` 左邊的第一個 function、並將它應用到右邊的第一個值，然後取左邊 list 的第二個 function、並將它應用到右邊的第二個值，以此類推。最終，它有點像是將兩個 list 扣在一起。但 list 已經為一個 `Applicative` 的實體了，所以我們要如何讓 list 也以第二種方式作為 `Applicative` 的實體呢？如果你還記得，我們說過 `ZipList a` 是為了這個理由而被引入的，其有一個只有一個欄位的值建構子，`ZipList`。我們將要包裝的 list 放進這個欄位。接著，`ZipList` 成為了一個 `Applicative` 的實體，使得我們想要以 zip 的方式將 list 用作 applicative 的時候，我們只要以 `ZipList` 建構子包裝它、然後當我們完成時，以 `getZipList` 來拆解它：
+
+<pre name="code" class="haskell:ghci">
+ghci> getZipList $ ZipList [(+1),(*100),(*5)] <*> ZipList [1,2,3]
+[2,200,15]
+</pre>
+
+所以，這個 <i>newtype</i> 關鍵字是做什麼用的？嗯，想想我們會怎麼寫我們的 `ZipList a` 型別的 data 宣告。一種方式是像這樣做：
+
+<pre name="code" class="haskell:hs">
+data ZipList a = ZipList [a]
+</pre>
+
+一個只有一個值建構子的型別，且這個值建構子只有一個為某值的 list 的欄位。我們可能也想使用 record 語法以讓我們自動地取得一個從`ZipList` 擷取 list 的 function：
+
+<pre name="code" class="haskell:hs">
+data ZipList a = ZipList { getZipList :: [a] }
+</pre>
+
+這看起來不賴，其實也運作得非常好。我們有兩種令現有型別為一個 typeclass 實體的方式，所以我們使用 <i>data</i> 關鍵字來將這個型別包成另一個型別，並讓後者以第二種方式作為實體。
+
+Haskell 中的 <i>newtype</i> 關鍵字，正是為了在我們僅想取一個型別、並將它包在某個將它表示為另一個型別的東西中的這種情況而生的。在實際的函式庫中，`ZipList a` 是像這樣被定義的：
+
+<pre name="code" class="haskell:hs">
+newtype ZipList a = ZipList { getZipList :: [a] }
+</pre>
+
+並非 <i>data</i> 關鍵字，而是使用 <i>newtype</i> 關鍵字。所以，為什麼要這樣？嗯，首先，<i>newtype</i> 比較快。若是你使用 <i>data</i> 關鍵字來包裝一個型別，在你的程式執行時就會有一些包裝與拆解的額外開銷。但若是你使用 <i>newtype</i>，Haskell 就知道你只是要使用它來將一個現有的型別包成一個新型別（於是有了這個名字），因為你想讓它是相同的內在、但擁有不同的型別。考慮到這一點，Haskell 可以在它解析這個值是什麼型別時，去除掉包裝與拆解的動作。
+
+所以為什麼不要每次都只使用 <i>newtype</i>，而非 <i>data</i> 呢？嗯，當你使用 <i>newtype</i> 關鍵字從一個現有型別建立一個新型別時，你就只能有一個值建構子，且這個值建構子只能有一個欄位。但以 <i>data</i>，你可以建立擁有多個值建構子、且每個建構子都可以有零或多個欄位的型別：
+
+<pre name="code" class="haskell:hs">
+data Profession = Fighter | Archer | Accountant
+
+data Race = Human | Elf | Orc | Goblin
+
+data PlayerCharacter = PlayerCharacter Race Profession
+</pre>
+
+使用 <i>newtype</i> 時，你就被限制成只有一個帶著一個欄位的建構子。
+
+我們也能夠以 <i>newtype</i> 使用 <i>deriving</i> 關鍵字，就像是我們會以 <i>data</i> 做的。我們可以為 `Eq`、`Ord`、`Enum`、`Bounded`、`Show` 與 `Read` 衍生實體。若是我們為一個 typeclass 衍生實體，我們所包裝的型別原先就必須在這個 typeclass 中。這很合理，因為 <i>newtype</i> 只是包裝一個現有的型別。所以現在，若是我們執行下述這行，我們就可以印出並比較我們的新型別的值：
+
+<pre name="code" class="haskell:hs">
+newtype CharList = CharList { getCharList :: [Char] } deriving (Eq, Show)
+</pre>
+
+讓我們試試它：
+
+<pre name="code" class="haskell:ghci">
+ghci> CharList "this will be shown!"
+CharList {getCharList = "this will be shown!"}
+ghci> CharList "benny" == CharList "benny"
+True
+ghci> CharList "benny" == CharList "oisters"
+False
+</pre>
+
+在這個特別的 <i>newtype</i> 中，值建構子為下述型別：
+
+<pre name="code" class="haskell:hs">
+CharList :: [Char] -> CharList
+</pre>
+
+它取一個 `[Char]` 值，像是 `"my sharona"`，並回傳一個 `CharList` 值。
+從上面我們使用 `CharList` 值建構子的例子，我們發現確實如此。相反的，`getCharList` function──它是因為我們在我們的 <i>newtype</i> 中使用了 record 語法而產生的──的型別為：
+
+<pre name="code" class="haskell:hs">
+getCharList :: CharList -> [Char]
+</pre>
+
+它取一個 `CharList` 值，並將它轉成 `[Char]` 值。你可以將這想成包裝與拆解，但你也可以將它想成將值從一個型別轉成另一個型別。
+
+### 使用 newtype 來建立 typeclass 實體
+
+很多時候，我們想要令我們的型別為特定 typeclass 的實體，但型別參數就是不合我們想要的。令 `Maybe` 為一個 `Functor` 實體是很容易的，但 `Functor` typeclass 是像這樣被定義的：
+
+<pre name="code" class="haskell:hs">
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+</pre>
+
+所以我們從這開始：
+
+<pre name="code" class="haskell:hs">
+instance Functor Maybe where
+</pre>
+
+然後實作 `fmap`。所有型別參數都很合理，因為 `Maybe` 取代了 `Functor` typeclass 定義中的 `f`，
+所以若是我們把 `fmap` 看成它只運作在 `Maybe` 的話，它最終的行為會像：
+
+<pre name="code" class="haskell:hs">
+fmap :: (a -> b) -> Maybe a -> Maybe b
+</pre>
+
+<img src="img/krakatoa.png" alt="wow, very evil" style="float:right" />
+這不是很好嗎？現在若是我們想要令 tuple 為 `Functor` 的實體，以在我們將一個 function `fmap` 到一個 tuple 時，它就會被應用到 tuple 的第一項？以這種方式，執行 `fmap (+3) (1,1)` 會產生 `(4,1)`。事實證明，為此寫下實體是有點困難的。對於 `Maybe`，我們只要表明 `instance Functor Maybe where`，因為只有恰好取一個參數的型別建構子可以作為 `Functor` 的實體。但看起來好像沒有辦法對 `(a,b)` 這麼做，以讓型別參數 `a` 在我們使用 `fmap` 時作為被改變的那個值。為了解決這個問題，我們可以 <i>newtype</i> 我們的 tuple，使得第二個型別參數代表 tuple 中第一項的型別：
+
+<pre name="code" class="haskell:hs">
+newtype Pair b a = Pair { getPair :: (a,b) }
+</pre>
+
+現在，我們可以令它為一個 `Functor` 的實體，以讓 function 被映射到第一項：
+
+<pre name="code" class="haskell:hs">
+instance Functor (Pair c) where
+    fmap f (Pair (x,y)) = Pair (f x, y)
+</pre>
+
+如你所見，我們能夠模式匹配到以 <i>newtype</i> 定義的型別。我們進行模式匹配以取得內部的 tuple，然後將 function `f` 應用 tuple 中的第一項，接著使用 `Pair` 值建構子來將 tuple 轉回我們的 `Pair b a`。若是我們將 `fmap` 的型別想成只運作在我們的新 pair 上，它會是：
+
+<pre name="code" class="haskell:hs">
+fmap :: (a -> b) -> Pair c a -> Pair c b
+</pre>
+
+再一次，我們表明 `instance Functor (Pair c) where`，於是 `Pair c` 取代了在 `Functor` typeclass 定義中的 `f`：
+
+<pre name="code" class="haskell:hs">
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+</pre>
+
+所以現在，若是我們將一個 tuple 轉成一個 `Pair b a`，我們可以對它使用 `fmap`，而 function 將會被映射到第一項：
+
+<pre name="code" class="haskell:ghci">
+ghci> getPair $ fmap (*100) (Pair (2,3))
+(200,3)
+ghci> getPair $ fmap reverse (Pair ("london calling", 3))
+("gnillac nodnol",3)
+</pre>
+
+### On newtype laziness
+
+我們提過 <i>newtype</i> 通常比 <i>data</i> 還快。<i>newtype</i> 唯一可以做的事情是將一個現有的型別轉成一個新型別，所以在內部，Haskell 可以將以 <i>newtype</i> 定義的型別的值像原先的型別一樣表示，只是它必須記住它現在的型別是不同的。這一事實意味著 <i>newtype</i> 不只比較快，它還比較懶（lazier）。讓我們看看這代表什麼。
+
+如同我們先前說過的，Haskell 預設是惰性的，這意味著只有在我們試著實際印出我們的 function 結果時，才會進行計算。此外，只有對於我們的 function 來說，為了告訴我們結果所必須的那些計算才會被執行。Haskell 中的 `undefined` 值表示一個錯誤計算。若是我們試著藉由將它印到終端機來對它求值（即，強迫 Haskell 真的去計算它），Hakslle 將會拋出一個 hissy fit（技術上簡稱為例外）：
+
+<pre name="code" class="haskell:ghci">
+ghci> undefined
+*** Exception: Prelude.undefined
+</pre>
+
+然而，若是我們建立一個在其中擁有一些 `undefined` 值的 list，但只需要 list 的 head──它並非 `undefined`──那個一切都將順利進行，因為若是我們只想看看第一個元素是什麼，Haskell 並不真的需要對 list 中的其它元素求值：
+
+<pre name="code" class="haskell:ghci">
+ghci> head [3,4,5,undefined,2,undefined]
+3
+</pre>
+
+現在考慮下述型別：
+
+<pre name="code" class="haskell:hs">
+data CoolBool = CoolBool { getCoolBool :: Bool }
+</pre>
+
+它是個你以 <i>data</i> 關鍵字定義的普通的代數資料型別。它有一個值建構子，其有一個型別為 `Bool` 的欄位。讓我們建立一個對一個 `CoolBool` 進行模式匹配，並且不論在 `CoolBool` 中的 `Bool` 為 `True` 或 `False` 都回傳 `"hello"` 的 function：
+
+<pre name="code" class="haskell:hs">
+helloMe :: CoolBool -> String
+helloMe (CoolBool _) = "hello"
+</pre>
+
+並非將這個 function 應用到一個普通的 `CoolBool`，讓我們給它個難題：將它應用到 `undefined`！
+
+<pre name="code" class="haskell:ghci">
+ghci> helloMe undefined
+"*** Exception: Prelude.undefined
+</pre>
+
+呀！一個例外！這個例外為何會發生呢？以 <i>data</i> 關鍵字定義的型別可以有多個值建構子（即使 `CoolBool` 只有一個）。所以為了要看看給定我們 function 的值是否符合 `(CoolBool _)` 模式，Haskell 必須對它求值，才能看看我們建立值所使用的值建構子是哪個。而當我們試著對一個 `undefined` 值求值時──即使只有一下子──就拋出一個例外了。
+
+並非使用 <i>data</i> 關鍵字來定義 `CoolBool`，讓我們試著使用 <i>newtype</i>：
+
+<pre name="code" class="haskell:hs">
+newtype CoolBool = CoolBool { getCoolBool :: Bool }
+</pre>
+
+我們不必修改我們的 `helloMe` function，因為若是你使用 <i>newtype</i> 或是 <i>data</i> 來定義你的型別，模式匹配語法都是相同的。在這裡，讓我們做一樣的事情，將 `helloMe` 套用到一個 `undefined` 值：
+
+<pre name="code" class="haskell:ghci">
+ghci> helloMe undefined
+"hello"
+</pre>
+
+<img src="img/shamrock.png" alt="top of the mornin to ya!!!" style="float:right" />
+它能動！唔，為何如此？嗯，如同我們說過的，當我們使用 <i>newtype</i> 時，Haskell 可以在內部將新型別的值以表示原來的值的相同方式來表示。它不必加上另一個盒子來包裝它，它只需要知道這個值是不同型別的。且因為 Haskell 知道以 <i>newtype</i> 關鍵字建立的型別只能有一個建構子，它就不必對傳遞到 function 的值求值，以確認它符合 `(CoolBool _)` 模式，因為 <i>newtype</i> 只能有一個可能的值建構子與一個欄位！
+
+這些行為上的差異看似微不足道，但它實際上非常重要，因為它幫助我們瞭解：即使以 <i>data</i> 與 <i>newtype</i> 定義的型別，從程式設計師觀點的表現相同，因為它們都有值建構子與欄位，它們實際上也是兩個不同的機制。<i>data</i> 可以從無到有建立你自己的型別，而 <i>newtype</i> 則是讓一個現有的資料型別變成一個全新型別。對 <i>newtype</i> 值模式匹配並不像是從一個盒子中取出東西（像是 <i>data</i> 一樣），它更像是建立一個從一個型別到另一個型別的直接轉換。
+
+### `type` vs. `newtype` vs. `data`
+
+此時，你可能有點搞混 <i>type</i>、<i>data</i> 與 <i>newtype</i> 之間的差異了，所以讓我們稍微回顧一下。
+
+*type* 關鍵字是用以建立型別同義詞。這意味著我們僅是將另一個名字給予一個已經存在的型別，以讓這個型別更容易參照。假使我們執行下述這行：
+
+<pre name="code" class="haskell:hs">
+type IntList = [Int]
+</pre>
+
+這所做的是允許我們以 `IntList` 參照 `[Int]` 型別。它們可以被交互使用。我們不會得到一個 `IntList` 值建構子、或是任何類似的東西。因為 `[Int]` 與 `IntList` 只是兩種參照到相同型別的方式，無論我們使用在我們型別註釋的名字是哪個都無所謂：
+
+<pre name="code" class="haskell:ghci">
+ghci> ([1,2,3] :: IntList) ++ ([1,2,3] :: [Int])
+[1,2,3,1,2,3]
+</pre>
+
+當我們想要藉由給定型別名稱──其告訴我們它被使用在 function 情境中的目的──以讓我們的型別更加具有描述性時，我們就使用型別同義詞。舉例來說，當我們使用一個 `[(String,String)]` 型別的關連列表來表示一本電話簿時，我們給它 `PhoneBook` 這個型別同義詞，以讓我們 function 的型別簽名更容易閱讀。
+
+*newtype* 用來取現有的型別，並將它包裝在新型別中，大多是為了更容易讓它成為特定 typeclass 的實體。當我們使用 <i>newtype</i> 來包裝一個現有型別時，我們得到的型別是不同於原先的型別的。若是我們建立下述 <i>newtype</i>：
+
+<pre name="code" class="haskell:hs">
+newtype CharList = CharList { getCharList :: [Char] }
+</pre>
+
+我們無法使用 `++` 來將一個 `CharList` 與一個 `[Char]` 型別的 list 擺在一起。我們甚至無法使用 `++` 來將兩個 `CharList` 擺在一起，因為 `++` 只能運作在 list 上，而 `CharList` 型別並非一個 list，即使它可以說它包含了一個 list。然而，我們可以將兩個 `CharList` 轉成 list、`++` 它們，然後將它們轉回 `CharList`。
+
+當我們在我們的 <i>newtype</i> 宣告使用 record 語法時，我們便得到用以在新型別與原始型別之間轉換的 function：即是我們 <i>newtype</i> 的值建構子，以及用以在它的欄位擷取值的 function。新型別也不會自動作為原始型別屬於的 typeclass 實體，所以我們必須衍生或手動撰寫它。
+
+實務上，你可以將 <i>newtype</i> 宣告想成只有一個建構子與一個欄位的 <i>data</i> 宣告。若是你發現你自己在寫這樣的 <i>data</i> 宣告時，就考慮使用 <i>newtype</i> 吧。
+
+*data* 關鍵字用來建立你自己的資料型別，並且使用它，你可能會興奮得發狂。它可以有數量如你所想的建構子與欄位，也可以用來實作任何代數資料型別。從 list、類 `Maybe` 型別到 tree 的任何東西。
+
+若是你僅想讓你的型別簽名看起來更清楚且更有描述性，你或許需要型別同義詞。若是你想要取一個現有型別，並將它包在一個新型別中，以讓它為一個 typeclass 的實體，你可能就是在找一個 <i>newtype</i>。假如你想要建立一個全新的型別，你要找的很可能是 <i>data</i> 關鍵字。
+
 ## <a name="monoids">單子</a>
